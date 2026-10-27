@@ -7,6 +7,11 @@ const WW_ROAD = [[0, 620], [220, 600], [420, 640], [640, 600], [860, 540], [1080
 const WW_WEST = { x: 20, y: 620 }, WW_EAST = { x: WWW - 20, y: 500 };
 // 空地：救援現場（若蘭與兩名惡徒）、觀察點、入口
 const WW_SITE = { x: 1150, y: 500 };
+// 第 2 章藏身的大樹（觀察點東側，擋住惡徒的視線）與樹旁的灌木
+const WW_HIDE_TREE = { x: 898, y: 561 }, WW_HIDE_BUSH = { x: 934, y: 577 };
+// 惡徒南側的灌木（第 2 章投石的目標）；ch02.js 會讓它在被打中時左右晃
+const WW_THROW_BUSH = { x: 1170, y: 650 };
+let wwThrowBush = null;
 const WW_CLEARINGS = [[WW_SITE.x, WW_SITE.y + 10, 230], [140, 610, 120], [930, 545, 90], [1630, 515, 110]];
 
 function wwRoad(px, py, jitter) {
@@ -77,6 +82,10 @@ function buildWild() {
     trees.push([x, y, 'bush']);
     const t = decorTree(R() < 0.5 ? 'bush' : 'bushA', R); shadow(x, y - 2, t.shadow, t.shadow * 0.28, 0.22); addSprite(t, Math.round(x), Math.round(y));
   }
+  // 藏身大樹：空地不長樹，這棵另外種
+  { const t = decorSprite('綠樹', 2); shadow(WW_HIDE_TREE.x + 4, WW_HIDE_TREE.y - 2, t.shadow, t.shadow * 0.32); addSprite(t, WW_HIDE_TREE.x, WW_HIDE_TREE.y); G.circles.push([WW_HIDE_TREE.x, WW_HIDE_TREE.y - 4, t.cr]);
+    const b = decorSprite('灌木', 2); shadow(WW_HIDE_BUSH.x, WW_HIDE_BUSH.y - 2, b.shadow, b.shadow * 0.28, 0.22); addSprite(b, WW_HIDE_BUSH.x, WW_HIDE_BUSH.y);
+    const tb = decorSprite('灌木', 0); shadow(WW_THROW_BUSH.x, WW_THROW_BUSH.y - 2, tb.shadow, tb.shadow * 0.28, 0.22); wwThrowBush = addSprite(tb, WW_THROW_BUSH.x, WW_THROW_BUSH.y); }
   const [mini, mg] = canvas(Math.round(WWW / 12), Math.round(WWH / 12));
   mg.imageSmoothingEnabled = true; mg.drawImage(G.ground, 0, 0, mini.width, mini.height);
   for (const [x, y, k] of trees) { mg.fillStyle = k === 'bush' ? '#2f4a1c88' : '#16281acc'; mg.fillRect(x / 12 - 1, y / 12 - 3, 3, 3); }
@@ -89,4 +98,32 @@ function buildWild() {
 function wildTriggers() {
   if (player.x < 30 && Math.abs(player.y - WW_WEST.y) < 120) { keys.clear(); return fade(() => { switchMap('forest', FOW - 60, FO_EXIT.y, 2); toast('村外森林'); }); }
   if (F().ch1_wolves && player.x > WWW - 30 && Math.abs(player.y - WW_EAST.y) < 120) { keys.clear(); return fade(() => { switchMap('village', 200, 800 + VN, 3); toast('清河村'); }); }
+}
+
+// 清晨薄霧：整片淡淡的白霧底色，加上十幾團較濃的霧在畫面各處（上、中、下）慢慢往東飄
+// 霧團位置以畫面座標為主、只跟鏡頭移動一點點（視差），所以不管走到哪裡，整個畫面都罩著霧
+// 第一次畫的時候才建立（這支檔案比 game.js 先載入，載入當下還沒有 VW、VH）
+let WW_MIST = null;
+const makeMist = () => Array.from({ length: 16 }, (_, i) => ({ x: (i * 211) % (VW + 500), y: ((i * 7) % 16) / 15 * VH, r: 150 + (i % 4) * 45, sp: 8 + (i % 5) * 3, ph: i * 1.3 }));
+// 霧先畫在另一張畫布上，再沿著林道挖掉（中間全清、往外漸濃），林道上看得清楚，兩側樹林才有霧
+let mistCv = null;
+function drawMist(t) {
+  if (!WW_MIST) { WW_MIST = makeMist(); mistCv = canvas(VW, VH); }
+  const [mc, g] = mistCv, s = t / 1000;
+  g.globalCompositeOperation = 'source-over'; g.clearRect(0, 0, VW, VH);
+  g.fillStyle = 'rgba(225,232,228,.1)'; g.fillRect(0, 0, VW, VH);
+  for (const m of WW_MIST) {
+    const x = ((m.x + s * m.sp - cam.x * 0.15) % (VW + 500) + VW + 500) % (VW + 500) - 250, y = m.y + Math.sin(s / 6 + m.ph) * 18 - (cam.y * 0.15) % 40;
+    const a = 0.22 + Math.sin(s / 4 + m.ph) * 0.06, gr = g.createRadialGradient(x, y, 0, x, y, m.r);
+    gr.addColorStop(0, `rgba(235,240,236,${a})`); gr.addColorStop(0.6, `rgba(235,240,236,${a * 0.45})`); gr.addColorStop(1, 'rgba(235,240,236,0)');
+    g.save(); g.translate(x, y); g.scale(2, 0.6); g.translate(-x, -y);
+    g.fillStyle = gr; g.fillRect(x - m.r, y - m.r, m.r * 2, m.r * 2); g.restore();
+  }
+  g.globalCompositeOperation = 'destination-out'; g.lineCap = g.lineJoin = 'round';
+  for (const [w, a] of [[220, 0.3], [170, 0.5], [120, 0.8], [80, 1]]) {
+    g.strokeStyle = `rgba(0,0,0,${a})`; g.lineWidth = w; g.beginPath();
+    WW_ROAD.forEach(([x, y], i) => (i ? g.lineTo : g.moveTo).call(g, x - cam.x, y - cam.y));
+    g.stroke();
+  }
+  ctx.drawImage(mc, 0, 0, VW, VH);
 }

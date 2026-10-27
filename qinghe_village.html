@@ -33,6 +33,8 @@ canvas#game{width:100%;aspect-ratio:16/9;display:block;margin:auto;image-renderi
 .hud .vhud .st:nth-of-type(7){border-top:1px solid #5f525866;padding-top:4px;margin-top:2px}.hud .vhud .st:nth-of-type(8),.hud .vhud .st:nth-of-type(9){border-top:1px solid #5f525866;padding-top:4px;margin-top:2px}
 .hud .vhud .auth{grid-column:1/3}.hud .vhud .raid{justify-content:flex-end}.hud .vhud .auth b{font-weight:400;font-size:12px}.vhud .raid{color:#ff9a7a;margin-left:4px;white-space:nowrap}.vhud .raid b{color:#ff6a4a}
 .ricon{width:16px;height:16px;image-rendering:pixelated;vertical-align:middle}.vstock .ricon{width:24px;height:24px;margin-bottom:2px}
+.phoneBtn{position:absolute;left:50%;bottom:22px;transform:translateX(-50%);display:none;padding:8px 18px;font-size:15px;color:#fff6dc;background:#3a1f14e8;border:2px solid #e0b060;border-radius:22px;cursor:pointer;animation:phonePulse 1s ease-in-out infinite}.phoneBtn.on{display:block}
+@keyframes phonePulse{50%{box-shadow:0 0 14px #ffd070}}
 .quest{position:absolute;top:12px;left:50%;transform:translateX(-50%);background:#0f1918c0;border:1px solid #8d7750;border-radius:20px;padding:5px 14px;font-size:12px;color:#f0dca8;pointer-events:none;white-space:nowrap;max-width:46%;overflow:hidden;text-overflow:ellipsis}
 #mini{position:absolute;top:12px;right:12px;width:213px;height:147px;border:2px solid #c2a36a;border-radius:4px;background:#000;opacity:.92;image-rendering:pixelated;pointer-events:none}
 .toast{position:absolute;bottom:16px;left:50%;transform:translate(-50%,10px);padding:8px 16px;background:#101d1ce8;border:1px solid #c3a46f;border-radius:6px;color:#f5dfa9;font-size:13px;pointer-events:none;opacity:0;transition:.3s;white-space:nowrap}
@@ -296,6 +298,7 @@ ul.log{list-style:none;padding:0;margin:0;font-size:13px;max-height:260px;overfl
     <canvas id="game" width="960" height="540"></canvas>
     <div class="hud"><div class="loc" id="hudLoc">清河村</div><div class="meta"><span id="hudTime">第 1 日 · 辰時</span><span id="hudGold">150 文</span></div><div class="hp"><i id="hudHp"></i></div><div class="vhud" id="hudVillage" style="display:none"></div></div>
     <div class="quest" id="hudQuest"></div>
+    <button class="phoneBtn" id="phoneBtn" onclick="ch02PhoneAlarm()">📱 手機鬧鐘</button>
     <div class="gov" id="gov"><header><b>清河村政務</b><button id="govClose" onclick="toggleGov()">✕</button></header><div class="gready" id="govReady"></div><div id="govBody"></div></div>
     <canvas id="mini" width="213" height="147"></canvas>
     <div class="toast" id="toast"></div>

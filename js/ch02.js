@@ -71,6 +71,8 @@ Object.assign(Sfx, {
     toneHit(ac, t, { type: 'sawtooth', f0: 180, f1: 120, dur: 0.5, v: 0.05 });
     noiseHit(ac, t + 0.55, { f: 1400, q: 1.5, dur: 0.12, v: 0.35 }); toneHit(ac, t + 0.55, { type: 'triangle', f0: 260, f1: 160, dur: 0.15, v: 0.3 });
   },
+  // 揪住衣服：布料被扯緊的「嘶」
+  cloth() { const ac = this.ctx(); if (!ac) return; const t = ac.currentTime + 0.02; noiseHit(ac, t, { type: 'highpass', f: 2400, dur: 0.22, v: 0.22 }); noiseHit(ac, t + 0.05, { f: 900, q: 0.8, dur: 0.12, v: 0.15 }); },
   // 雨滴「滴答」
   drip() { const ac = this.ctx(); if (!ac) return; const t = ac.currentTime + 0.02; toneHit(ac, t, { f0: 1500, f1: 700, dur: 0.12, v: 0.2 }); },
   // 床板傾倒「砰」
@@ -98,7 +100,7 @@ function shakeScreen(ms = 300, amp = 6) {
   };
   tick();
 }
-// 投石：石頭從主角手上畫一道拋物線飛進濃霧樹叢，落點枝葉晃動
+// 投石：石頭從主角手上畫一道拋物線飛進惡徒南側的灌木，落點枝葉晃動
 function throwStone(tx, ty) {
   const sx = player.x, sy = player.y - 40;
   worldFx.push({ t: 0, dur: 1.1, draw(p) {
@@ -114,7 +116,14 @@ function throwStone(tx, ty) {
     for (let i = 0; i < 9; i++) { const a = i / 9 * Math.PI * 2; ctx.fillRect(Math.round(tx + Math.cos(a) * 26 * q - cam.x), Math.round(ty - 20 + Math.sin(a) * 16 * q + 30 * q * q - cam.y), 3, 2); }
     ctx.globalAlpha = 1;
   } });
-  setTimeout(() => Sfx.bush(), 600);
+  setTimeout(() => { Sfx.bush(); shakeThrowBush(); }, 600);
+}
+// 被石頭打中的灌木左右晃 1.2 秒（直接挪動地圖上那叢灌木的位置）
+function shakeThrowBush() {
+  const b = wwThrowBush; if (!b) return;
+  const x0 = WW_THROW_BUSH.x, t0 = performance.now();
+  const tick = () => { const p = (performance.now() - t0) / 1200; if (p >= 1) { b.x = x0; return; } b.x = x0 + Math.round(Math.sin(p * 30) * 3 * (1 - p)); requestAnimationFrame(tick); };
+  tick();
 }
 // 漏雨：雨滴從屋頂破洞落到主角頭上（持續 dur 秒）
 function rainDrops(dur = 9) {
@@ -153,6 +162,34 @@ Object.assign(STORY_HOOKS, {
   rainDrops: (e) => rainDrops(e.dur),
   bedFall: () => { Sfx.bedFall(); shakeScreen(380, 8); playPose(heroSitImg, SIT_DOWN.slice(0, 5), true); },
   clearPose: () => { poseImg = null; lookFr = null; },
+  emote: (e) => emote(e.who, e.icon),
+  // 投石後：兩名惡徒一起冒驚嘆號、轉頭望向南邊的樹叢
+  thugsTurn: () => { for (const id of ['thug_f1', 'thug_f2']) { emote(id, '!'); const a = actorOf(id); if (a) a.dir = 0; } },
+  // 鬧鐘響起：兩人冒問號、左右張望約 2.5 秒
+  thugsLook: () => {
+    for (const id of ['thug_f1', 'thug_f2']) emote(id, '?', 2.2);
+    let n = 0;
+    const iv = setInterval(() => {
+      [['thug_f1', [2, 3, 1, 2, 3]], ['thug_f2', [3, 2, 1, 3, 2]]].forEach(([id, ds]) => { const a = actorOf(id); if (a) a.dir = ds[n % ds.length]; });
+      if (++n >= 6) clearInterval(iv);
+    }, 420);
+  },
+  phoneWave: () => phoneWave(2.6),
+  // 揪帽T：橫肉漢子貼上來，把主角拎高幾像素、左右晃兩下，之後一直拎著
+  grabHood: () => holdFor(900, () => {
+    const t = actorOf('thug_f1'); if (t) { t.x = player.x + 26; t.y = player.y - 4; t.dir = 2; }
+    player.dir = 3; Sfx.cloth(); emote('player', '!');
+    tweenActor(player, 700, (p) => { player.lift = Math.round(Math.min(1, p / 0.25) * 7); player.jx = p < 0.85 ? Math.round(Math.sin(p * 28) * 2) : 0; });
+  }),
+  // 再次舉棍：橫肉漢子往後仰一下，畫面輕震
+  raiseClub: () => holdFor(600, () => {
+    const t = actorOf('thug_f1'); if (!t) return;
+    tweenActor(t, 450, (p) => { t.lift = Math.round(Math.sin(p * Math.PI) * 4); t.jx = Math.round(Math.sin(p * Math.PI) * 5); });
+    setTimeout(() => shakeScreen(220, 3), 300);
+  }),
+  // 老吳出現：橫肉漢子鬆手，主角落回地面
+  dropHood: () => { player.lift = 0; player.jx = 0; },
+  branchSlide: () => { F().ch02_kicked = 1; branchSlide(); shakeScreen(260, 3); },
   // 林道線索：腳印、草藥兩處都看過就能前往觀察點
   ch02Clue: (e) => {
     F()[e.key] = 1;
@@ -206,6 +243,80 @@ function drawHerbSprig(x, y, k) {
 function drawCh02Clues(t) {
   const f = F(); if (!f.ch01_voice || f.ch02_rescued) return;
   const ox = -cam.x, oy = -cam.y;
+  if (!f.ch02_kicked) drawBranchPile(Math.round(CH02.branches.x + ox), Math.round(CH02.branches.y + oy));
+  // 樹根旁的石塊（岩石素材縮小），撿起前一直在
+  if (!f.ch02_stone && DECOR['岩石']) { const w = 26, h = Math.round(w * 59 / 77); ctx.imageSmoothingEnabled = true; ctx.drawImage(DECOR['岩石'], Math.round(CH02.stone.x - w / 2 + ox), Math.round(CH02.stone.y - h + 4 + oy), w, h); ctx.imageSmoothingEnabled = false; }
   for (const [dx, dy, s, fl] of CLUE_STEPS) drawFootprint(Math.round(CH02.foot.x + dx + ox), Math.round(CH02.foot.y + dy + oy), s, fl);
   [[-14, -4, 0.3], [6, 6, -0.5], [18, -8, 0.9], [-30, 8, -0.2], [34, 2, 0.4]].forEach(([dx, dy, k]) => drawHerbSprig(Math.round(CH02.herb.x + dx + ox), Math.round(CH02.herb.y + dy + oy), k));
+}
+
+// 枯枝堆：幾根粗細不一的枯枝交疊（深色描邊＋亮面），夾著幾片乾葉
+// [起點 dx, dy, 長度, 角度, 粗細]
+const BRANCH_PILE = [[-20, 2, 34, -0.18, 3], [-14, -4, 30, 0.35, 2], [-4, -8, 28, -0.5, 2], [-24, -6, 22, 0.1, 2], [2, 0, 24, -0.08, 3], [-10, 4, 26, 0.22, 2], [6, -6, 16, 0.8, 2]];
+const BRANCH_LEAVES = [[-16, -6, '#a8742e'], [-2, -2, '#c08a3a'], [10, -4, '#8a5a24'], [-8, 4, '#b07a30'], [14, 2, '#9a6a2a'], [-22, 0, '#c4964a']];
+function drawBranchPile(x, y) {
+  ctx.fillStyle = 'rgba(16,22,10,.28)'; ctx.beginPath(); ctx.ellipse(x - 2, y + 4, 26, 6, 0, 0, Math.PI * 2); ctx.fill();
+  for (const [dx, dy, len, ang, w] of BRANCH_PILE) {
+    ctx.save(); ctx.translate(x + dx, y + dy); ctx.rotate(ang);
+    ctx.fillStyle = '#2e1e10'; ctx.fillRect(-1, -1, len + 2, w + 2);
+    ctx.fillStyle = '#6b4a2a'; ctx.fillRect(0, 0, len, w);
+    ctx.fillStyle = '#9a7246'; ctx.fillRect(1, 0, len - 3, 1);
+    ctx.fillStyle = '#5a3d22'; ctx.fillRect(Math.round(len * 0.6), -2, 1, 2); // 小分岔
+    ctx.restore();
+  }
+  for (const [dx, dy, c] of BRANCH_LEAVES) { ctx.fillStyle = c; ctx.fillRect(x + dx, y + dy, 3, 2); ctx.fillRect(x + dx + 1, y + dy - 1, 1, 1); }
+}
+
+// 依時間逐幀呼叫 fn(p)，p 由 0 到 1
+function tweenActor(a, ms, fn) {
+  const t0 = performance.now();
+  const tick = () => { const p = Math.min(1, (performance.now() - t0) / ms); fn(p); if (p < 1) requestAnimationFrame(tick); };
+  tick();
+}
+
+// ---------- 林道救援：大樹掩體、手機按鈕、鬧鐘音波、枯枝滑落 ----------
+// 看到現場之後、救人之前，停在藏身處附近就蹲著
+function ch02Hiding() {
+  const f = F();
+  return G.id === 'wildwood' && f.ch02_vantage && !f.ch02_rescued && !player.moving && !scripted && Math.hypot(player.x - CH02.vantage.x, player.y - CH02.vantage.y) < 60;
+}
+// 投石之後畫面下方出現手機按鈕，不用翻選單
+const ALARM_READY = { allFlags: ['ch02_thrown'], notFlags: ['ch02_alarm'] };
+function ch02Tick() {
+  $('phoneBtn').classList.toggle('on', G.id === 'wildwood' && storyCond(ALARM_READY) && !isModal());
+}
+function ch02PhoneAlarm() {
+  if (isModal() || !storyCond(ALARM_READY)) return;
+  $('phoneBtn').classList.remove('on'); talk(dialogueItems('dlg_ch02_alarm'));
+}
+// 鬧鐘：從主角手上一圈一圈往兩側擴散的音波
+function phoneWave(dur) {
+  worldFx.push({ t: 0, dur, draw(p) {
+    const x = player.x - cam.x + 8, y = player.y - cam.y - 40, t = p * dur;
+    ctx.save(); ctx.lineWidth = 2;
+    for (let i = 0; i < 3; i++) {
+      const k = (t * 1.4 + i / 3) % 1, r = 8 + k * 70;
+      ctx.strokeStyle = `rgba(255,240,170,${(1 - k) * 0.85})`;
+      ctx.beginPath(); ctx.arc(x, y, r, -1.2, 1.2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y, r, Math.PI - 1.2, Math.PI + 1.2); ctx.stroke();
+    }
+    ctx.restore();
+  } });
+}
+// 踢枯枝：枯枝和落葉被踢得四散，揚起一陣塵土
+function branchSlide() {
+  const bx = CH02.branches.x, by = CH02.branches.y;
+  const bits = Array.from({ length: 14 }, (_, i) => ({ dx: (Math.random() - 0.5) * 50, v: 40 + Math.random() * 50, d: Math.random() * 0.3, stick: i % 3 === 0, r: Math.random() * 3 }));
+  worldFx.push({ t: 0, dur: 1.4, draw(p) {
+    const t = p * 1.4;
+    ctx.globalAlpha = Math.max(0, 1 - p * 0.9);
+    for (const b of bits) {
+      const k = Math.max(0, t - b.d), x = bx + b.dx + k * 18 - cam.x, y = by - 20 + k * b.v - cam.y;
+      if (b.stick) { ctx.save(); ctx.translate(x, y); ctx.rotate(b.r + k * 4); ctx.fillStyle = '#6b4a2a'; ctx.fillRect(-7, -1, 14, 2); ctx.restore(); }
+      else { ctx.fillStyle = '#9a7a3a'; ctx.fillRect(Math.round(x), Math.round(y), 3, 2); }
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = `rgba(170,140,100,${0.35 * (1 - p)})`;
+    for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(bx - cam.x + (i - 2) * 14, by + 24 - cam.y - p * 10, 8 + p * 16, 0, Math.PI * 2); ctx.fill(); }
+  } });
 }

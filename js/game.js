@@ -761,6 +761,7 @@ function fieldTriggers(moved) {
 
 // ---------- 繪製 ----------
 function drawActor(a) {
+  if (a.lift || a.jx) { const x0 = a.x, y0 = a.y; a.x += a.jx || 0; a.y -= a.lift || 0; a.lift0 = a.lift; a.lift = 0; const j = a.jx; a.jx = 0; drawActor(a); a.x = x0; a.y = y0; a.lift = a.lift0; a.jx = j; return; }
   const x = Math.round(a.x - cam.x), y = Math.round(a.y - cam.y), sz = Math.round(64 * a.scale), fw = cellOf(a.sheet, a.fw || CHAR_FW);
   ctx.fillStyle = 'rgba(15,20,12,.38)'; ctx.beginPath(); ctx.ellipse(x, y, 12 * a.scale, 4.5 * a.scale, 0, 0, Math.PI * 2); ctx.fill();
   smoothFor(a.sheet); // 點陣人物不做平滑縮放，避免糊掉（高解析度主角圖除外）
@@ -780,6 +781,8 @@ function drawPlayer() {
   if (prone && proneImg) return drawProne(performance.now());
   // 單列動作圖（張望 hero_look、跌坐 hero_sit；ch01.js playPose）
   if (lookFr !== null && poseImg) { player.sheet = poseImg; player.frame = lookFr; player.dir = 0; return drawActor(player); }
+  // 第 2 章躲在大樹後：停下來就蹲著（拔草圖的蹲姿格）
+  if (gatherImg && ch02Hiding()) { const sh = player.sheet, fr = player.frame; player.sheet = gatherImg; player.frame = 2; drawActor(player); player.sheet = sh; player.frame = fr; return; }
   // 穿現代裝、面朝下站著不動時，循環播放待機動作（hero_idle.png，單列 8 格）
   if (heroIdleImg && modernLook() && !player.moving && !gathering && player.dir === 0) {
     player.pose = { img: heroIdleImg, fr: Math.floor(performance.now() / 220) % 8 }; drawActor(player); player.pose = null; return;
@@ -883,6 +886,7 @@ function render(t) {
   const dark = G.cave ? 0.92 : darkness(S.time) * (G.interior ? 0.5 : 1), h = (S.time / 60) % 24;
   const dusk = Math.max(0, 1 - Math.abs(h - 18) / 1.6);
   if (dusk > 0) { ctx.fillStyle = `rgba(255,120,40,${dusk * 0.13})`; ctx.fillRect(0, 0, VW, VH); }
+  if (G.id === 'wildwood') drawMist(t);
   if (dark > 0.01) {
     lctx.globalCompositeOperation = 'source-over'; lctx.clearRect(0, 0, VW, VH);
     lctx.fillStyle = `rgba(8,12,40,${dark * (G.id === 'village' || G.id === 'forest' || G.id === 'wildwood' ? 0.8 : 0.64)})`; lctx.fillRect(0, 0, VW, VH);

@@ -341,6 +341,7 @@ function syncLyingQin() {
 }
 function drawStoryDecals() {
   if (G.id === 'in_river') { syncLyingQin(); drawRoofHole(); }
+  ch02Tick();
   if (G.id === 'wildwood') drawCh02Clues(performance.now());
   if (G.id !== 'forest' || !F().ch04_ready || F().ch04_rescued) return;
   // 調查前只看得到第一處那灘血和旁邊幾滴；調查後整條血路都看得見

@@ -33,14 +33,17 @@ const FO_SPRING = { x: FO_POOL.x, y: FO_POOL.y - 12 }; // forest.js 的山泉水
 const WROOM = { bed: { x: 110, y: 250 }, door: { x: 260, y: 330 } };
 // 第 2 章：林道救援、清河村、祠堂、王宅的各個定點
 const CH02 = {
-  // 林道：兩處線索（腳印、草藥）、觀察點、救援解謎的石塊／濃霧樹叢（投石落點）／斜坡枯枝
+  // 林道：兩處線索（腳印、草藥）、觀察點、救援解謎的石塊／惡徒南側的樹叢（投石落點）／樹後的枯枝堆
   // 林道救援在村西野林（wildwood.js）：第 1 章在倒木歇完就結束，走出村外森林的東出口、進到野林才開始第 2 章
   start: { x: 140, y: 610 },
   // 若蘭與惡徒所在的救援現場（野林中段偏東的空地）
   site: { x: WW_SITE.x, y: WW_SITE.y },
   // 兩處線索都在林道前段（救援現場還在畫面外），沿路走過去就會注意到
   foot: { x: 400, y: 632 }, herb: { x: 560, y: 622 },
-  vantage: { x: 930, y: 540 }, stone: { x: 900, y: 592 }, fogSpot: { x: 1000, y: 470 }, fogBush: { x: 1040, y: 420 }, branches: { x: 880, y: 505 },
+  // 觀察點＝大樹後的藏身處（大樹在 wildwood.js 的 WW_HIDE_TREE）；撿石、投石、開鬧鐘、踢枯枝都在樹附近完成，不必走出掩體
+  vantage: { x: 860, y: 545 }, stone: { x: 832, y: 582 }, branches: { x: 808, y: 508 },
+  // 投石目標：惡徒南側的樹叢（wildwood.js 的 WW_THROW_BUSH，被石頭打中會晃）
+  fogBush: { x: WW_THROW_BUSH.x, y: WW_THROW_BUSH.y - 30 },
   // 救援後老吳扶著若蘭先往東走到這裡（野林東出口前）
   lead: { x: WW_EAST.x - 170, y: WW_EAST.y + 20 },
   // 清河村：西村口、公倉隊伍、屋簷下的祖母、水渠、荒田、水車
@@ -91,10 +94,9 @@ const QUESTS = {
     objectives: [
       { text: '沿著林道往前，留意路上的痕跡', flag: 'ch02_clues', at: ['wildwood', CH02.herb.x, CH02.herb.y] },
       { text: '躲到能看清楚狀況的地方', flag: 'ch02_vantage', at: ['wildwood', CH02.vantage.x, CH02.vantage.y] },
-      { text: '不要硬碰硬：先撿起斜坡下的石塊', flag: 'ch02_stone', at: ['wildwood', CH02.stone.x, CH02.stone.y] },
-      { text: '把石頭丟向右邊濃霧裡的樹叢', flag: 'ch02_thrown', at: ['wildwood', CH02.fogSpot.x, CH02.fogSpot.y] },
+      { text: '不要硬碰硬：撿起樹根旁的石頭，丟向惡徒南邊的樹叢', flag: 'ch02_thrown', at: ['wildwood', CH02.stone.x, CH02.stone.y] },
       { text: '打開手機鬧鐘（Esc → 道具 → 手機）', flag: 'ch02_alarm' },
-      { text: '踢動斜坡上的枯枝，假裝很多人趕來', flag: 'ch02_rescued', at: ['wildwood', CH02.branches.x, CH02.branches.y] },
+      { text: '踢散大樹後面的枯枝堆，假裝很多人趕來', flag: 'ch02_rescued', at: ['wildwood', CH02.branches.x, CH02.branches.y] },
       { text: '跟著老吳和沈若蘭往東走出林子', flag: 'ch02_entered', at: ['wildwood', WW_EAST.x - 60, WW_EAST.y] },
       { text: '看看清河村的情況，往村中的公倉走', flag: 'ch02_porridge', at: ['village', CH02.granary.x, CH02.granary.y] },
       { text: '到北坡的祠堂見村長陳伯安', flag: 'ch02_permit', at: ['village', CH02.shrine.x, CH02.shrine.y] },
@@ -374,7 +376,7 @@ const DIALOGUES = {
   dlg_ch02_c_more: { lines: [[HERO_NAME + '（OS）', '先別急……再看清楚一點，到底是什麼狀況。']] },
   // 直接衝向惡徒時：拉回來，不進入戰鬥
   dlg_ch02_too_close: { lines: [
-    [HERO_NAME + '（OS）', '我又不是練家子，就這樣衝出去只會一起被打。先想辦法吧。', 'worry'],
+    [HERO_NAME + '（OS）', '再往前就會被看到了……我又不是練家子，衝出去只會一起被打。先躲回樹後想辦法。', 'worry'],
     { walk: [{ who: 'player', x: CH02.vantage.x - 30, y: CH02.vantage.y + 10 }] },
   ] },
   // S02 CG01：林道上的呼救
@@ -392,44 +394,49 @@ const DIALOGUES = {
     ['橫肉漢子', '啊！臭丫頭！'],
     '（她抓住空檔往後退，卻因扭傷又跌回泥地。）',
     { cg: null },
-    '（你躲在樹後，看得心跳狂跳。）',
+    '（你蹲在大樹後面，從樹幹旁探出半個頭，看得心跳狂跳。）',
     [HERO_NAME + '（心想）', '兩個人。一個有棍子。那個女孩子腳受傷了。我連武器都沒有。', 'shock'],
     '（你抬手摸了摸口袋裡的手機。）',
     [HERO_NAME + '（低聲）', '冷靜，王小明。你是工程師。工程師遇到打不贏的 Bug，第一件事就是……不要硬碰硬。', 'serious'],
-    '（你觀察四周：左側是鬆動的斜坡，堆著枯枝和石塊；右側是霧濃得看不清的密林。）',
+    '（你觀察四周：身旁的樹根邊有幾塊石頭，樹後堆著一堆枯枝；惡徒身後偏南有一叢半人高的灌木。）',
   ], effects: [{ type: 'set_flag', key: 'ch02_vantage' }] },
   // S03 救援環境解謎：撿石 → 投石 → 手機鬧鐘 → 踢枯枝
   dlg_ch02_stone: { lines: [
-    '（你從斜坡腳下撿起一塊拳頭大的石頭。）',
+    '（你從樹根旁撿起一塊拳頭大的石頭。）',
     { effects: [{ type: 'item', id: 'small_stone', n: 1, quiet: true }, { type: 'set_flag', key: 'ch02_stone' }] },
     // 【補】
-    [HERO_NAME + '（OS）', '丟到右邊那片霧裡……讓他們以為那邊有人。'],
-  ] },
+    [HERO_NAME + '（OS）', '丟到他們南邊那叢灌木裡……讓他們以為那邊有人。'],
+  ], next: 'dlg_ch02_throw' },
   dlg_ch02_throw: { lines: [
-    '（你朝濃霧裡的樹叢丟去。）',
+    '（你從樹後探出身子，朝那叢灌木丟去。）',
     { effects: [{ type: 'hook', name: 'throwStone' }] },
     '啪啦！',
+    { effects: [{ type: 'hook', name: 'thugsTurn' }] },
     ['瘦漢子', '誰？！'],
+    { walk: [{ who: 'thug_f2', x: CH02.site.x + 40, y: CH02.site.y + 95 }] },
+    '（灌木嘩啦啦地晃。兩人同時轉頭，瘦漢子提著藥簍往那邊走了幾步。）',
     { effects: [{ type: 'item', id: 'small_stone', n: -1, quiet: true }, { type: 'set_flag', key: 'ch02_thrown' }] },
     // 【補】操作提示：手機在選單「道具」裡
     [HERO_NAME + '（OS）', '趁他們轉頭——手機！鬧鐘開到最大！', 'serious'],
-    '【提示】按 Esc 打開選單 →「道具」→ 手機「查看」。',
+    '【提示】點畫面下方的「手機鬧鐘」按鈕（或按 Esc →「道具」→ 手機）。',
   ] },
   dlg_ch02_alarm: { lines: [
     { cg: null },
     '（你趁兩人轉頭，從手機裡找出鬧鐘，將聲音調到最大，按下測試。）',
-    { effects: [{ type: 'hook', name: 'sfx2', sound: 'alarm' }, { type: 'set_flag', key: 'ch02_alarm' }] },
+    { effects: [{ type: 'hook', name: 'sfx2', sound: 'alarm' }, { type: 'hook', name: 'phoneWave' }, { type: 'set_flag', key: 'ch02_alarm' }] },
     '滴滴滴滴——！',
-    '（刺耳的電子鈴聲在森林裡炸開。）',
+    { effects: [{ type: 'hook', name: 'thugsLook' }] },
+    '（刺耳的電子鈴聲在森林裡炸開。兩名漢子東張西望，一時分不清聲音從哪裡來。）',
     [HERO_NAME + '（扯開喉嚨）', '這邊！人在這邊！官差大人，就是他們——快把林子圍起來！', 'shock'],
     // 【補】操作提示
-    [HERO_NAME + '（OS）', '再來……斜坡上的枯枝！弄出很多人在跑的聲音！'],
+    [HERO_NAME + '（OS）', '再來……樹後那堆枯枝！弄出很多人在跑的聲音！'],
   ] },
   dlg_ch02_branches: { lines: [
-    '（你一邊喊，一邊踢動斜坡上的枯枝，弄出彷彿多人正在林中跑動的聲音。）',
-    { effects: [{ type: 'hook', name: 'sfx2', sound: 'steps' }, { type: 'hook', name: 'sfx2', sound: 'alarm' }] },
+    '（你一邊喊，一邊踢散樹後的枯枝堆，踩得枝葉劈啪作響，弄出彷彿多人正在林中跑動的聲音。）',
+    { effects: [{ type: 'hook', name: 'sfx2', sound: 'steps' }, { type: 'hook', name: 'sfx2', sound: 'alarm' }, { type: 'hook', name: 'branchSlide' }] },
     ['橫肉漢子', '這什麼鬼叫聲？'],
     ['瘦漢子', '官差？這種時候怎麼會有官差進林子？'],
+    { effects: [{ type: 'hook', name: 'emote', who: 'thug_f1', icon: '!' }] },
     '（橫肉漢子握緊棍子，反而朝聲音來源衝去。）',
     ['橫肉漢子', '管他的！先看看誰在裝神弄鬼！'],
   ], next: 'dlg_ch02_chase' },
@@ -438,20 +445,23 @@ const DIALOGUES = {
     { walk: [{ who: 'thug_f1', near: 'player', dx: 34, dy: -6, run: true }] },
     '（你臉色一變。）',
     [HERO_NAME + '（心想）', '糟了，只有一個人被騙到！', 'shock'],
-    '（你轉身就跑，腳下卻被濕滑落葉絆住，整個人摔進斜坡邊的落葉堆。）',
+    '（你轉身就跑，腳下卻被濕滑落葉絆住，整個人摔進樹旁的落葉堆。）',
     { effects: [{ type: 'hook', name: 'hurt' }] },
     '（木棍呼的一聲落下。你勉強側身，棍子仍重重砸在左肩。）',
     [HERO_NAME, '啊——痛痛痛痛痛！', 'shock'],
+    { effects: [{ type: 'hook', name: 'grabHood' }] },
     '（橫肉漢子一把揪住你的帽T。）',
     ['橫肉漢子', '原來就你一個？穿得跟妖怪似的，還敢騙老子！'],
     [HERO_NAME, '等一下！你拉輕一點！這件衣服很貴耶！', 'worry'],
     ['橫肉漢子', '老子管你貴不貴！'],
+    { effects: [{ type: 'hook', name: 'raiseClub' }] },
     '（他再次舉起棍子。）',
     { effects: [{ type: 'set_flag', key: 'ch02_wu_here' }] },
     '（突然，林道另一頭傳來一聲暴喝。）',
     ['老吳', '哪個不長眼的，敢在清河村的山頭欺負人！'],
-    { walk: [{ who: 'wu_f', near: 'player', dx: 90, dy: -30, run: true }] },
+    { walk: [{ who: 'wu_f', x: CH02.site.x - 10, y: CH02.site.y + 60, run: true }] },
     '（一名背著柴捆的中年樵夫大步衝來，手裡的柴斧在晨光下閃著冷光。）',
+    { effects: [{ type: 'hook', name: 'dropHood' }] },
     '（你抓住機會，再度放聲大喊。）',
     [HERO_NAME, '你看吧！我就說官差來了！後面還有二十個！', 'shock'],
     '（樵夫愣了半瞬，隨即會意，以斧背用力敲擊樹幹。）',
@@ -1122,8 +1132,8 @@ const STORY_EVENTS = [
   { id: 'ch02_c_foot', map: 'wildwood', area: [CH02.foot.x, CH02.foot.y, 60], if: { allFlags: ['ch02_entry'], notFlags: ['ch02_vantage'] }, dialogue: 'dlg_ch02_c_foot' },
   { id: 'ch02_c_herb', map: 'wildwood', area: [CH02.herb.x, CH02.herb.y, 60], if: { allFlags: ['ch02_entry'], notFlags: ['ch02_vantage'] }, dialogue: 'dlg_ch02_c_herb' },
   { id: 'ch02_discovery', map: 'wildwood', area: [CH02.vantage.x, CH02.vantage.y, 45], if: { allFlags: ['ch02_clues'] }, dialogue: 'dlg_ch02_discovery' },
-  // 救人之前直接衝向惡徒：拉回觀察點（可重複觸發）
-  { id: 'ch02_too_close', map: 'wildwood', area: [CH02.site.x - 40, CH02.site.y + 30, 70], once: false, if: { allFlags: ['ch01_voice'], notFlags: ['ch02_rescued'] }, dialogue: 'dlg_ch02_too_close' },
+  // 救人之前走出大樹掩體、靠近惡徒：拉回樹後（可重複觸發）
+  { id: 'ch02_too_close', map: 'wildwood', area: [CH02.site.x - 40, CH02.site.y + 20, 130], once: false, if: { allFlags: ['ch01_voice'], notFlags: ['ch02_rescued'] }, dialogue: 'dlg_ch02_too_close' },
   { id: 'ch02_to_village', map: 'wildwood', area: [WW_EAST.x - 60, WW_EAST.y, 110], if: { allFlags: ['ch02_walk'], notFlags: ['ch02_entered'] }, dialogue: 'dlg_ch02_to_village' },
   { id: 'ch02_porridge', map: 'village', area: [CH02.granary.x, CH02.granary.y, 140], if: { allFlags: ['ch02_entered'] }, dialogue: 'dlg_ch02_porridge' },
   { id: 'ch02_chief', map: 'village', area: [CH02.shrine.x, CH02.shrine.y, 150], if: { allFlags: ['ch02_porridge'] }, dialogue: 'dlg_ch02_chief' },
@@ -1149,9 +1159,8 @@ const STORY_SPOTS = [
   { id: 'fo_az', map: 'forest', x: FO_AZ.x, y: FO_AZ.y + 8, r: 60, name: '老樹', talk: [[{ notFlags: ['ch01_az'] }, 'dlg_fo_az', true], [null, 'dlg_fo_az_again']] },
   { id: 'fo_log', map: 'forest', x: FO_LOG.x, y: FO_LOG.y + 10, r: 70, name: '倒木', if: { allFlags: ['ch01_shadow'], notFlags: ['ch01_diary'] }, talk: [[null, 'dlg_ch01_diary', true]] },
   // 第 2 章村西野林：救援解謎（依序出現）；林道線索改成走過就觸發（STORY_EVENTS 的 ch02_c_*）
-  { id: 'ch02_stone', map: 'wildwood', x: CH02.stone.x, y: CH02.stone.y, r: 50, name: '石塊', if: { allFlags: ['ch02_vantage'], notFlags: ['ch02_stone'] }, talk: [[null, 'dlg_ch02_stone', true]] },
-  { id: 'ch02_fog', map: 'wildwood', x: CH02.fogSpot.x, y: CH02.fogSpot.y, r: 60, name: '濃霧樹叢', if: { allFlags: ['ch02_stone'], notFlags: ['ch02_thrown'] }, talk: [[null, 'dlg_ch02_throw', true]] },
-  { id: 'ch02_branches', map: 'wildwood', x: CH02.branches.x, y: CH02.branches.y, r: 55, name: '斜坡枯枝', if: { allFlags: ['ch02_alarm'], notFlags: ['ch02_rescued'] }, talk: [[null, 'dlg_ch02_branches', true]] },
+  { id: 'ch02_stone', map: 'wildwood', x: CH02.stone.x, y: CH02.stone.y, r: 50, name: '石塊', if: { allFlags: ['ch02_vantage'], notFlags: ['ch02_stone'] }, talk: [[null, 'dlg_ch02_stone']] },
+  { id: 'ch02_branches', map: 'wildwood', x: CH02.branches.x, y: CH02.branches.y, r: 55, name: '枯枝堆', if: { allFlags: ['ch02_alarm'], notFlags: ['ch02_rescued'] }, talk: [[null, 'dlg_ch02_branches']] },
   // 清河村（進村後、見村長前）
   { id: 'ch02_canal', map: 'village', x: CH02.canal.x, y: CH02.canal.y, r: 60, name: '乾涸的水渠', if: { allFlags: ['ch02_entered'], notFlags: ['ch02_complete'] }, talk: [[{ notFlags: ['ch02_seen_canal'] }, 'dlg_ch02_canal', true], [null, 'dlg_ch02_canal']] },
   { id: 'ch02_field', map: 'village', x: CH02.field.x, y: CH02.field.y, r: 60, name: '荒田', if: { allFlags: ['ch02_entered'], notFlags: ['ch02_complete'] }, talk: [[{ notFlags: ['ch02_seen_field'] }, 'dlg_ch02_field', true], [null, 'dlg_ch02_field']] },

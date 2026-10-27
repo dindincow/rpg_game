@@ -58,7 +58,7 @@ const ITEMS = {
   lighter: { name: '打火機', type: 'key', desc: '塑膠打火機，一按就有火。比起手機，這東西在這裡可能更有用。' },
   water:{ name: '半瓶水', type: 'key', desc: '塑膠瓶裝的礦泉水，只剩一半。' },
   stick: { name: '粗樹枝', type: 'key', desc: '在林道邊撿到的粗樹枝，握起來剛剛好。總比空手好。' },
-  small_stone: { name: '石塊', type: 'key', desc: '林道斜坡下撿的石頭，拳頭大小。丟出去的聲音應該夠大。' },
+  small_stone: { name: '石塊', type: 'key', desc: '大樹根旁撿的石頭，拳頭大小。丟出去的聲音應該夠大。' },
   black_arrow: { name: '黑羽斷箭', type: 'key', desc: '從野狼身上掉下來的半截斷箭。箭羽是罕見的黑色鳥羽，箭桿上烙著一個看不懂的記號。' },
   spring_water: { name: '一瓶山泉水', type: 'use', heal: 25, desc: '在山泉邊裝滿的寶特瓶。喝起來比辦公室的飲水機甜。' },
 };
