@@ -289,6 +289,8 @@ const FOREST_TALK = {};
 let prone = null, proneImg = null, heroFaceModern = null, heroModernWalk = null, heroRunImg = null, heroHurtImg = null;
 // 待機（hero_idle.png）、挖礦（hero_mine.png）：單列 8 格，每格 86
 let heroIdleImg = null, heroMineImg = null;
+// 肩傷（hero_shoulder.png）：單列 8 格，0 站著摀肩、1–2 疼得縮起來、3–4 彎腰、5–6 蹲下喘氣、7 站起來
+let heroShoulderImg = null;
 // 剛穿越過來（還沒到清河村）時，小蝦米穿的是現代衣服：紅色連帽外套、背包（assets/characters/hero_modern_walk.png）
 // 吳嬸送他一套衣裳（F().outfit）之前，都穿著穿越時的現代衣服
 const modernLook = () => !!heroFaceModern && S && !S.flags.outfit;

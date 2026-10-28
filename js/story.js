@@ -71,7 +71,7 @@ function relOf(id) {
 function playDialogue(id) { talk(dialogueItems(id)); }
 function showCg(file) {
   const el = $('cg');
-  if (file) el.style.backgroundImage = 'url("assets/' + file + '")';
+  if (file) { el.style.backgroundImage = 'url("assets/' + file + '")'; el.classList.remove('push'); }
   cgUi(null);
   el.classList.toggle('on', !!file);
 }
@@ -219,8 +219,17 @@ function upgradeStory(st) {
   const f = S.flags;
   // 舊版第 2 章（見過村長就結束）：視為已熬過王宅第一夜，第 3 章的人物照常出現
   if (f.ch02_chief && !f.ch02_permit && !f.ch02_complete) Object.assign(f, { ch02_complete: 1, ch02_permit: 1, ch02_wu_left: 1, ch02_porridge: 1 });
+  // 王宅抵達拆成兩段之前的存檔：拿到暫住許可但還沒到王宅，補上帶路旗標，走到門前即可觸發後段
+  if (f.ch02_permit && !f.ch02_wu_left) f.ch02_led = 1;
   // 舊版第 1 章黑影事件會把手機弄到沒電；還沒救人的存檔補回 9%，第 2 章才用得了鬧鐘
   if (f.ch01_shadow && !f.ch02_rescued && !(f.phone_batt > 0)) Object.assign(f, { phone_batt: 9, phone_saver: 1, torch: 0 });
+  // 舊版第 3 章（一次修好王宅）：已修好者補齊新版第 3 章旗標視為走完；還沒修好者清掉舊任務目標的進度記憶，從新流程開始
+  if (f.ch02_complete && !f.ch03_wake_start) {
+    if (f.wang_house_repaired) {
+      for (const k of ['wake_start', 'wake', 'phone', 'wood', 'c_rubble', 'c_basket', 'c_weeds', 'cleared', 's_good', 's_rotten', 's_tiles', 'sorted', 'smith_told', 'tools', 'treated', 'drain_try', 'drain', 'door', 'bed', 'sign', 'chief_done', 'flowers', 'evening', 'complete']) f['ch03_' + k] = 1;
+      f.ch02_bed_tilt = 0;
+    } else for (const k of Object.keys(st.obj)) if (k.startsWith('q_ch03_repair_wang_house:')) delete st.obj[k];
+  }
   if (st.quests.q_ch05_teaser) { delete st.quests.q_ch05_teaser; if (!st.quests.q_ch05_heal) st.quests.q_ch05_heal = 'active'; }
   if (st.quests.q_ch04_teaser) { delete st.quests.q_ch04_teaser; if (!st.quests.q_ch04_rescue) st.quests.q_ch04_rescue = 'active'; }
 }
@@ -331,16 +340,19 @@ function lyingQinImg() {
   g.fillStyle = '#c9a45c'; for (let x = 66; x < 136; x += 16) g.fillRect(x, 34, 6, 6);
   return (lyingQin = c);
 }
-// 以 y 排序的物件放進王宅室內：躺在床上（床圖錨點 (78, 88)，枕頭在左端）；不在床上時換成空圖
+// 以 y 排序的物件放進王宅室內：躺在底圖的床上（床墊中心約在床前緣上方 83px，枕頭在左端）；不在床上時換成空圖
 let lyingSprite = null;
 function syncLyingQin() {
   const R = MAPS.in_river; if (!R) return;
-  if (!lyingSprite) { lyingSprite = { img: canvas(1, 1)[0], x: WROOM.bed.x, y: WROOM.bed.y + 1, ax: 70, ay: 77 }; R.sprites.push(lyingSprite); }
+  if (!lyingSprite) { lyingSprite = { img: canvas(1, 1)[0], x: WROOM.bed.x + 2, y: WROOM.bed.y + 1, ax: 70, ay: 122 }; R.sprites.push(lyingSprite); }
   const img = F().ch04_back && lyingQinImg();
   lyingSprite.img = img || canvas(1, 1)[0];
 }
 function drawStoryDecals() {
-  if (G.id === 'in_river') { syncLyingQin(); drawRoofHole(); }
+  if (G.id === 'in_river') { syncBedTilt(); syncLyingQin(); drawRoofHole(); drawWangProps(); }
+  if (G.id === 'village') syncPlaque();
+  drawDoorChipRest();
+  drawCh03Decals();
   ch02Tick();
   if (G.id === 'wildwood') drawCh02Clues(performance.now());
   if (G.id !== 'forest' || !F().ch04_ready || F().ch04_rescued) return;

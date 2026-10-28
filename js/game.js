@@ -168,6 +168,7 @@ function switchMap(id, x, y, dir = 0) {
   else if (id === 'yunshan') { applyYunshanFlags(G); spawnYunshanMonsters(); }
   else monsters = [];
   if (G.chest) G.chest.img = makeChest(!!F().homeChest).img;
+  if (G.groundAlt) G.ground = F()[G.altFlag] ? G.groundAlt : G.groundBase;
 }
 // 已擊退的敵人不再出現
 function enterRoom(id) {
@@ -1186,6 +1187,7 @@ async function boot() {
     heroModernWalk = await loadImg('assets/characters/hero_modern_walk.png').then(hd3).catch(() => null);
     heroRunImg = await loadImg('assets/characters/hero_run.png').catch(() => null);
     heroHurtImg = await loadImg('assets/characters/hero_hurt.png').catch(() => null);
+    heroShoulderImg = await loadImg('assets/characters/hero_shoulder.png').then(hd3).catch(() => null);
     heroLookImg = await loadImg('assets/characters/hero_look.png').then(hd3).catch(() => null);
     heroSitImg = await loadImg('assets/characters/hero_sit.png').catch(() => null);
     heroDustImg = await loadImg('assets/characters/hero_dust.png').then(hd3).catch(() => null);
@@ -1213,7 +1215,7 @@ async function boot() {
     MAPS.wildwood = buildWild();
     MAPS.mine = buildMine();
     await Promise.all(Object.entries(BATTLE_BG_FILES).map(async ([id, n]) => { BATTLE_BG[id] = await loadImg('assets/battle/' + n + '.png').catch(() => null); }));
-    await Promise.all(Object.values(ROOMS).filter((r) => r.bg).map(async (r) => { ROOM_BG[r.bg] = await loadImg('assets/interiors/' + r.bg + '.png').catch(() => null); }));
+    await Promise.all(Object.values(ROOMS).flatMap((r) => [r.bg, r.bgAlt]).filter(Boolean).map(async (bg) => { ROOM_BG[bg] = await loadImg('assets/interiors/' + bg + '.png').catch(() => null); }));
     Object.assign(MAPS, buildInteriors());
     $('loading').style.display = 'none';
     initActors();

@@ -29,8 +29,8 @@ const FO_QIN = { x: FO_WU.x, y: FO_WU.y };
 // 王宅：清河北岸，使用者的建築圖（河畔人家.png）
 const WANG = { x: 3060, y: 1000 + VN }; // 王宅大門：清河村東邊林子深處（world.js 的 BUILDINGS river）
 const FO_SPRING = { x: FO_POOL.x, y: FO_POOL.y - 12 }; // forest.js 的山泉水潭
-// 王宅室內（in_river，520×370）：床在左側，秦無風躺在床上
-const WROOM = { bed: { x: 110, y: 250 }, door: { x: 260, y: 330 } };
+// 王宅室內（in_river，底圖縮成 1000×650）：床在左側（bed 為床前緣中點、bedBox 為床在底圖上的範圍），秦無風躺在床上；mid 房間中央
+const WROOM = { bed: { x: 225, y: 412 }, bedBox: [103, 256, 348, 412], door: { x: 476, y: 615 }, mid: { x: 476, y: 380 } };
 // 第 2 章：林道救援、清河村、祠堂、王宅的各個定點
 const CH02 = {
   // 林道：兩處線索（腳印、草藥）、觀察點、救援解謎的石塊／惡徒南側的樹叢（投石落點）／樹後的枯枝堆
@@ -52,8 +52,21 @@ const CH02 = {
   // 祠堂前、往王宅的土路起點
   shrine: { x: SHRINE.x, y: SHRINE.y + 200 }, road: { x: WANG.x - 420, y: WANG.y + 70 },
 };
+// 清河祠室內（in_shrine，底圖縮成 1100×619）：村長站在祭祀桌右側；進門後老吳、沈若蘭在門內，盤問時一起走到村長面前
+const SHRINE_ROOM = { door: { x: 550, y: 585 }, chief: { x: 690, y: 300 }, front: { x: 804, y: 318 } };
 // 王宅屋頂破洞（室內，月光照在地上的位置）
-const WHOLE = { x: 230, y: 190 };
+const WHOLE = { x: 322, y: 283 };
+// 第 3 章：王宅門前的清理點、材料分類、排水溝、匾額落地處；老吳站位、村道來人的起點；室內窗邊與桌上陶杯
+const CH03 = {
+  rubble: { x: WANG.x - 130, y: WANG.y + 50 }, basket: { x: WANG.x + 135, y: WANG.y + 55 }, weeds: { x: WANG.x - 60, y: WANG.y + 125 },
+  good: { x: WANG.x - 175, y: WANG.y + 105 }, rotten: { x: WANG.x - 110, y: WANG.y + 150 }, tiles: { x: WANG.x + 80, y: WANG.y + 130 },
+  piles: { x: WANG.x - 205, y: WANG.y + 62 }, drain: { x: WANG.x + 165, y: WANG.y + 95 },
+  wu: { x: WANG.x - 70, y: WANG.y + 80 }, road: { x: WANG.x - 330, y: WANG.y + 100 }, plaque: { x: WANG.x + 40, y: WANG.y + 32 },
+  window: { x: 909, y: 236 }, sill: { x: 850, y: 330 }, cup: { x: 578, y: 352 },
+};
+// 鐵峰武器鋪（韓鐵山）：村裡的門口、室內（in_weapon，底圖縮成 1000×619）的門口
+const SMITH_DOOR = (() => { const b = BUILDINGS.find((x) => x.id === 'weapon'); return { x: b.x + b.door[0], y: b.y + b.door[1] }; })();
+const SMITH_ROOM = { door: { x: 509, y: 572 } };
 // 第 5 章：村外森林的止血草（解毒藥材）
 const FO_HERBS = [[330, 1470], [820, 1390], [980, 940], [560, 1260], [1390, 990]];
 
@@ -72,6 +85,13 @@ const STORY_EXITS = {
   'wildwood>village': [WW_EAST.x, WW_EAST.y],
   'wildwood>forest': [WW_WEST.x, WW_WEST.y],
   'wildwood>in_river': [WW_EAST.x, WW_EAST.y],
+  'village>in_shrine': [SHRINE_DOOR.x, SHRINE_DOOR.y],
+  'in_shrine>village': [SHRINE_ROOM.door.x, SHRINE_ROOM.door.y],
+  'in_shrine>in_river': [SHRINE_ROOM.door.x, SHRINE_ROOM.door.y],
+  'village>in_weapon': [SMITH_DOOR.x, SMITH_DOOR.y],
+  'in_weapon>village': [SMITH_ROOM.door.x, SMITH_ROOM.door.y + 30],
+  'in_weapon>in_river': [SMITH_ROOM.door.x, SMITH_ROOM.door.y + 30],
+  'in_river>in_weapon': [WROOM.door.x, WROOM.door.y + 20],
 };
 
 const QUESTS = {
@@ -99,25 +119,31 @@ const QUESTS = {
       { text: '踢散大樹後面的枯枝堆，假裝很多人趕來', flag: 'ch02_rescued', at: ['wildwood', CH02.branches.x, CH02.branches.y] },
       { text: '跟著老吳和沈若蘭往東走出林子', flag: 'ch02_entered', at: ['wildwood', WW_EAST.x - 60, WW_EAST.y] },
       { text: '看看清河村的情況，往村中的公倉走', flag: 'ch02_porridge', at: ['village', CH02.granary.x, CH02.granary.y] },
-      { text: '到北坡的祠堂見村長陳伯安', flag: 'ch02_permit', at: ['village', CH02.shrine.x, CH02.shrine.y] },
-      { text: '進王宅，看看門框、屋頂和舊床', flag: 'ch02_house_checked', at: ['in_river', 260, 220] },
+      { text: '到北坡的祠堂見村長陳伯安', flag: 'ch02_permit', at: ['in_shrine', SHRINE_ROOM.front.x, SHRINE_ROOM.front.y] },
+      { text: '跟著老吳走到王宅門前', flag: 'ch02_wu_left', at: ['village', WANG.x, WANG.y + 60] },
+      { text: '進王宅，看看門框、屋頂和舊床', flag: 'ch02_house_checked', at: ['in_river', WROOM.mid.x, WROOM.mid.y] },
       { text: '在王宅熬過第一夜', flag: 'ch02_complete', at: ['in_river', WROOM.bed.x + 40, WROOM.bed.y + 24] },
     ],
     rewards: [{ type: 'rel', char: 'lao_wu', stat: 'trust', n: 5 }, { type: 'item', id: 'herb', n: 2 }],
     next: ['q_ch03_repair_wang_house'],
   },
   q_ch03_repair_wang_house: {
-    id: 'q_ch03_repair_wang_house', chapterId: 'ch03', title: '修好王宅',
-    desc: '村長只肯讓你暫住河邊的荒宅。院牆破損、屋頂漏雨，得先修到能住人。',
+    id: 'q_ch03_repair_wang_house', chapterId: 'ch03', title: '王宅裡的異鄉人',
+    desc: '三日之約的第一個完整工作日。肩傷未癒、手機只剩 6%，先把漏雨的王宅修到能住人。',
     at: ['village', WANG.x, WANG.y + 20],
     objectives: [
-      { text: '到河邊的王宅看看', flag: 'ch03_inspect' },
-      { text: '在院中量好排水斜度，向韓鐵山借工具', flag: 'ch03_tools', at: ['village', WANG.x + 95, WANG.y + 70] },
-      { text: '找老吳商量木料', flag: 'ch03_wu', at: ['village', WANG.x - 110, WANG.y + 85] },
-      { text: '蒐集木材（村外森林砍樹）', item: 'wood', amount: 5, at: ['forest', FO_CHOP[1][0], FO_CHOP[1][1]] },
-      { text: '讓沈若蘭看看肩上的傷', flag: 'ch03_wound', at: ['village', WANG.x + 20, WANG.y + 110] },
-      { text: '清點院裡還能用的瓦片', flag: 'ch03_tiles', at: ['village', WANG.x - 120, WANG.y + 40] },
-      { text: '動手修繕王宅（大門前按 E）', flag: 'wang_house_repaired', at: ['village', WANG.x, WANG.y + 20] },
+      { text: '清晨醒來，看看舊床、屋頂漏水和門窗', flag: 'ch03_wake', at: ['in_river', WROOM.mid.x, WROOM.mid.y] },
+      { text: '到門外看看是誰在喊', flag: 'ch03_wood', at: ['village', WANG.x, WANG.y + 50] },
+      { text: '清理王宅門前的碎瓦、破竹筐和雜草', flag: 'ch03_cleared', at: ['village', CH03.rubble.x, CH03.rubble.y] },
+      { text: '把木料和瓦片分類（可用／朽木／瓦片）', flag: 'ch03_sorted', at: ['village', CH03.good.x, CH03.good.y] },
+      { text: '跟老吳到鐵峰武器鋪，向韓鐵山借工具', flag: 'ch03_tools', at: ['in_weapon', SMITH_ROOM.door.x, SMITH_ROOM.door.y] },
+      { text: '回王宅繼續幹活', flag: 'ch03_treated', at: ['village', WANG.x, WANG.y + 80] },
+      { text: '接竹管排水，讓水流到院外舊溝', flag: 'ch03_drain', at: ['village', CH03.drain.x, CH03.drain.y] },
+      { text: '換上舊門鉸，把大門修好', flag: 'ch03_door', at: ['village', WANG.x, WANG.y + 14] },
+      { text: '換掉屋裡的爛床腳', flag: 'ch03_bed', at: ['in_river', WROOM.bed.x + 20, WROOM.bed.y + 20] },
+      { text: '和老吳一起補屋頂的破洞', flag: 'wang_house_repaired', at: ['in_river', WHOLE.x, WHOLE.y] },
+      { text: '把掉落的「王宅」匾額掛回門楣', flag: 'ch03_sign', at: ['village', CH03.plaque.x, CH03.plaque.y] },
+      { text: '天黑了，回屋裡休息（床邊按 E）', flag: 'ch03_complete', at: ['in_river', WROOM.bed.x + 20, WROOM.bed.y + 20] },
     ],
     rewards: [{ type: 'heart', n: 5 }, { type: 'item', id: 'herb', n: 2 }, { type: 'gold', n: 20 }],
     next: ['q_ch04_rescue'],
@@ -654,15 +680,18 @@ const DIALOGUES = {
     [HERO_NAME, '也是。', 'tired'],
     // 【補】引導到祠堂
     ['老吳', '走吧，村長這時候多半在祠堂那邊對帳。總得讓他見見你。'],
-    '【提示】祠堂在村子北邊的山坡上，從廣場東北的石階往上走。',
+    '【提示】祠堂在村子北邊的山坡上，從廣場東北的石階往上走，在祠堂門口按住「上」走進去。',
   ], effects: [{ type: 'set_flag', key: 'ch02_porridge' }] },
   // S09–S11 村長盤問、三選一、三日之期（小說第四幕）
   dlg_ch02_chief: { lines: [
-    '（村長陳伯安是個頭髮花白、身形瘦削的老人。此時正坐在祠堂旁的小木桌前，核對當日分糧的數量。桌上擺著舊帳簿、一只算盤和半盞已涼的茶。）',
+    '（村長陳伯安是個頭髮花白、身形瘦削的老人。此時正坐在祠堂內的小木桌前，核對當日分糧的數量。桌上擺著舊帳簿、一只算盤和半盞已涼的茶。）',
     '（分粥的婦人正向他回報。）',
     ['婦人', '村長，今日已按戶分完。可倉裡剩下的……'],
     ['陳伯安', '我知道了。先把老人和孩子的份額留出來，其餘的我再想辦法。'],
-    { walk: [{ who: 'woman_s', x: CH02.shrine.x + 260, y: CH02.shrine.y + 330 }] },
+    { walk: [{ who: 'woman_s', x: SHRINE_ROOM.door.x + 10, y: SHRINE_ROOM.door.y + 40 }] },
+    { effects: [{ type: 'set_flag', key: 'ch02_woman_out' }] },
+    { walk: [{ who: 'wu_s', x: SHRINE_ROOM.front.x + 34, y: SHRINE_ROOM.front.y - 52 }, { who: 'ruolan_s', x: SHRINE_ROOM.front.x + 34, y: SHRINE_ROOM.front.y + 56 }, { who: 'player', x: SHRINE_ROOM.front.x, y: SHRINE_ROOM.front.y }] },
+    { effects: [{ type: 'hook', name: 'face', who: 'player', dir: 2 }, { type: 'hook', name: 'face', who: 'wu_s', dir: 2 }, { type: 'hook', name: 'face', who: 'ruolan_s', dir: 2 }] },
     '（婦人退下。老吳帶著沈若蘭和你走上前。）',
     { effects: [{ type: 'meet', char: 'chen_boan' }] },
     ['陳伯安', '若蘭，妳回來了？腳怎麼了？'],
@@ -752,9 +781,16 @@ const DIALOGUES = {
     [HERO_NAME, '就是洗澡的地方。'],
     ['老吳', '院子裡有井，離河也不遠。'],
     [HERO_NAME, '……好，我大概知道了。', 'tired'],
+    ['老吳', '再往前走一段就到了。'],
+    { walk: [{ who: 'wu_h', x: WANG.x - 70, y: WANG.y + 70 }] },
+    { effects: [{ type: 'set_flag', key: 'ch02_led' }] },
+    '【提示】往東走，到王宅門前看看。',
+  ] },
+  // S12 後段：玩家自己走到王宅門前才觸發（門板與匾額掉落）
+  dlg_ch02_at_house: { lines: [
     { walk: [{ who: 'wu_h', x: WANG.x - 70, y: WANG.y + 70 }, { who: 'player', x: WANG.x, y: WANG.y + 40 }] },
     { effects: [{ type: 'hook', name: 'face', who: 'player', dir: 1 }] },
-    '（兩人來到一座荒廢已久的宅院前。院牆破損，雜草叢生，木門斜斜掛在門框上。門楣上勉強還能認出兩個字——「王宅」。）',
+    '（兩人來到一座荒廢已久的宅院前。院牆破損，雜草叢生，木門斜斜掛在門框上。門楣上歪掛著一塊破舊匾額，只剩一根釘子撐著，勉強還能認出兩個字——「王宅」。）',
     '（你站在門前，沉默許久。）',
     [HERO_NAME, '老吳伯……你們村長是不是不太喜歡我？', 'doubt'],
     ['老吳', '何出此言？'],
@@ -764,10 +800,12 @@ const DIALOGUES = {
     '（老吳忍不住哈哈大笑。）',
     ['老吳', '至少還有四面牆！'],
     '（你推了推木門。）',
-    { effects: [{ type: 'hook', name: 'sfx2', sound: 'doorFall' }, { type: 'hook', name: 'pause', ms: 900 }] },
+    { effects: [{ type: 'hook', name: 'doorChip' }, { type: 'hook', name: 'pause', ms: 1500 }] },
     '嘎吱——啪。',
-    '（一塊腐朽木片掉了下來。）',
+    '（一塊腐朽木片掉了下來。門楣上那塊匾額晃了兩下，釘子一鬆，也跟著「咚」地砸在地上，揚起一陣灰。）',
     { effects: [{ type: 'hook', name: 'face', who: 'player', dir: 0 }] },
+    { effects: [{ type: 'hook', name: 'debrisSettle' }, { type: 'hook', name: 'emote', who: 'player', icon: '…' }, { type: 'hook', name: 'pause', ms: 900 }] },
+    '（你低頭望著木片和匾額。）',
     [HERO_NAME, '……現在只剩三面半了吧？', 'tired'],
     { walk: [{ who: 'wu_h', near: 'player', dx: -36, dy: 8 }] },
     { effects: [{ type: 'hook', name: 'emote', who: 'player', icon: '💦' }, { type: 'hook', name: 'shake', ms: 160, amp: 2 }] },
@@ -849,49 +887,7 @@ const DIALOGUES = {
     { effects: [{ type: 'set_flag', key: 'ch02_complete' }, { type: 'chapter', id: 'ch03' }, { type: 'hook', name: 'autosave' }] },
   ] },
 
-  // ===== 第 3 章 =====
-  dlg_ch03_inspect: { lines: [
-    '（院牆塌了一角，大門歪斜，屋頂破了好幾個洞。院子裡積著昨夜的雨水，牆根已經泡得發黑。）',
-    [HERO_NAME, '……這就是我的新家？比我租的雅房還慘。', 'shock'],
-    '（門口兩隻石獅子，一隻缺了耳朵，一隻頭上長了一叢草。）',
-    [HERO_NAME, '你們好。以後請多指教。……你那撮草挺時髦的。', 'smile'],
-    [HERO_NAME + '（OS）', '跟石獅子打招呼。我大概是真的累了。', 'tired'],
-    '（你推了推大門。「嘎——」門軸發出一聲長長的慘叫，然後整扇門往旁邊歪了下去。）',
-    [HERO_NAME, '……我什麼都沒做。這是它自己的決定。', 'surprise'],
-    '（屋樑上「撲啦」一聲，飛出一隻灰撲撲的大鳥，瞪了你一眼。）',
-    [HERO_NAME, '哇啊！……原來有房客了。抱歉抱歉，我是新來的。', 'shock'],
-    [HERO_NAME + '（OS）', '王家的男丁都被徵走了，王老太太也走了……這屋子，大概很久沒人跟它說話了。', 'sigh'],
-    [HERO_NAME, '好，先別抱怨。門窗、排水、屋頂——一樣一樣來。', 'smile'],
-    [HERO_NAME + '（OS）', '把房子當成一個爛掉的專案：先列需求、再排優先順序。……沒想到工程師的技能在這裡也用得上。', 'grin'],
-  ], effects: [{ type: 'set_flag', key: 'ch03_inspect' }] },
-  dlg_ch03_gate_wait: { lines: [
-    { branch: [
-      [{ notFlags: ['ch03_tiles'] }, ['（王宅還破著。院子裡那堆碎瓦，或許還能挑出幾片能用的。）']],
-      [{ notFlags: ['ch03_tools'] }, ['（王宅還破著。要動工，總得先有工具。）', [HERO_NAME + '（OS）', '徒手修屋頂……這不是修行，是自殺。', 'tired']]],
-      [null, ['（王宅還破著。要動工，還差 5 份木材。）', '（屋樑上的大鳥歪著頭看你，像在催工。）', [HERO_NAME, '知道了知道了，我在趕進度了。', 'sigh']]],
-    ] },
-  ] },
-  dlg_ch03_repair: { lines: [
-    { choice: { q: '要用 5 份木材修繕王宅嗎？', options: [
-      { id: 'yes', label: '動工（木材 −5，耗時半天）', effects: [{ type: 'item', id: 'wood', n: -5, why: '修繕王宅' }, { type: 'hook', name: 'repairWang' }], next: 'dlg_ch03_repaired' },
-      { id: 'no', label: '再等等', lines: [] },
-    ] } },
-  ] },
-  dlg_ch03_repaired: { lines: [
-    '（你和老吳換下爛掉的門板，補好屋頂，順著量好的斜度挖了一道排水溝。）',
-    '（傍晚下起小雨。雨水沿著新挖的溝渠流走，屋裡第一次是乾的。）',
-    [HERO_NAME, '總算……有個能睡覺的地方了。', 'happy'],
-    '（屋樑上的大鳥也縮回了窩裡，看樣子不打算搬家。）',
-    [HERO_NAME, '行，房租就免了。你負責抓老鼠。', 'grin'],
-    ['老吳', '你這小子，跟鳥也能講價？'],
-    [HERO_NAME, '在我那邊，這叫「室友協議」。', 'wink'],
-    // 【補】章末懸念：老吳警告黑松林最近有武裝陌生人活動
-    ['老吳', '小子，有件事得跟你說。黑松林最近不太平，砍柴的人說看見帶刀的陌生人在林子裡轉。'],
-    ['老吳', '你往後出去找水、找木頭，眼睛可得放亮些。'],
-    [HERO_NAME, '帶刀的陌生人……我醒來那天，好像也聽見林子裡有人在打。'],
-    [HERO_NAME, '明天我去附近看看水源和木材。能撿的就撿，能避的就避。'],
-    '【王宅】修好的王宅可以休息、存檔（在大門前按 E）。',
-  ], effects: [{ type: 'set_flag', key: 'wang_house_repaired' }, { type: 'chapter', id: 'ch04' }] },
+  // ===== 第 3 章：劇情對話在 js/ch03.js；這裡只留之後章節仍會用到的王宅與閒聊對話 =====
   dlg_wang_rest: { lines: [
     { choice: { q: '王宅', options: [
       { id: 'rest', label: '休息到天亮', effects: [{ type: 'hook', name: 'rest' }, { type: 'set_flag', key: 'ch04_ready' }], lines: [
@@ -911,49 +907,8 @@ const DIALOGUES = {
       { id: 'leave', label: '離開' },
     ] } },
   ] },
-  // 韓鐵山：量排水、借工具
-  dlg_ch03_smith: { lines: [
-    '【漏雨的王宅院中，你用木棍比量排水斜度。】',
-    ['韓鐵山', '你這異鄉人，拿著木棍畫什麼？房子能靠畫就修好？'],
-    [HERO_NAME, '先知道水往哪兒跑，才不會今天補屋頂，明天牆根又泡爛。'],
-    ['韓鐵山', '聽著還有些道理。工具借你，壞了要還。'],
-  ], effects: [{ type: 'set_flag', key: 'ch03_tools' }, { type: 'rel', char: 'han_tieshan', stat: 'trust', n: 5 }, { type: 'log', text: '向韓鐵山借到修繕工具' }] },
-  dlg_ch03_smith_early: { lines: [['韓鐵山', '村長叫我來看看這破宅子……你先自己進院子瞧瞧，到底破成什麼樣。']] },
-  dlg_ch03_smith_after: { lines: [['韓鐵山', '工具省著用。鋸子要是崩了齒，我可要你賠。']] },
-  // 老吳：木料（沿用既有「伐木」生活技能與柴刀）
-  dlg_ch03_wu: { lines: [
-    ['老吳', '修房子要木料。老漢這兒還有兩根曬乾的，先給你。'],
-    { effects: [{ type: 'item', id: 'wood', n: 2, why: '老吳送的木料' }] },
-    ['老吳', '不夠的，自己去西邊村外的林子砍。來，這把柴刀你拿著。斧要斜著下，順著木紋，別跟樹硬碰硬。'],
-    { effects: [{ type: 'hook', name: 'learnLogging' }, { type: 'set_flag', key: 'ch03_wu' }] },
-    ['老吳', '一棵樹一天只砍一回，別貪多。村子西口落石旁有條小徑能進林子。'],
-  ] },
-  dlg_ch03_wu_after: { lines: [['老吳', '木料夠了就動工吧，老漢幫你搭把手。']] },
   dlg_wu_idle: { lines: [['老吳', '屋子住得還慣吧？有空來吳家喝碗湯，我那口子手藝不錯。']] },
-  // 沈若蘭：處理傷口
-  dlg_ch03_ruolan: { lines: [
-    ['沈若蘭', '你肩上有傷，別搬太重。'],
-    '（她解開你的袖子，用搗碎的草藥敷上，手法又快又穩。）',
-    [HERO_NAME, '收到，沈大夫。'],
-  ], effects: [{ type: 'set_flag', key: 'ch03_wound' }, { type: 'heal' }, { type: 'rel', char: 'shen_ruolan', stat: 'affection', n: 3 }] },
   dlg_ruolan_idle: { lines: [['沈若蘭', '村裡缺藥，也缺糧。我能做的，就是讓病人多撐一天是一天。']] },
-  // 瓦片清點 → 顧文淵登場
-  dlg_ch03_tiles: { lines: [
-    '（你把院裡的碎瓦一片片翻過來，好的、裂的、碎的分成三堆。）',
-    ['顧文淵（搖扇）', '一個連瓦片都分門別類的人，倒少見。', 'smile'],
-    [HERO_NAME, '顧兄，東西少就更得算清楚。你看，還剩十五塊能用的瓦。'],
-    '（你們之前在村口見過一面——自稱顧文淵的落魄書生，總在村裡替人寫信記帳。）',
-    ['顧文淵', '瓦可算，糧又如何？村裡人再省，也省不出不存在的米。', 'serious'],
-    { choice: { key: 'ch03_gu_answer', q: '怎麼回答？', options: [
-      { id: 'grow', label: '「那就找能換糧的東西，或者能讓田重新長糧的方法。」', effects: [{ type: 'rel', char: 'gu_wenyuan', stat: 'ideology', n: 5 }],
-        lines: [['顧文淵（收扇）', '看來你不是只會補房子。', 'happy']] },
-      // 【補】
-      { id: 'count', label: '「先把帳算清楚。至少知道離斷糧還有幾天。」', effects: [{ type: 'rel', char: 'gu_wenyuan', stat: 'trust', n: 5 }],
-        lines: [['顧文淵', '巧婦難為無米之炊。你有良策，也得先有米。', 'sigh'], ['顧文淵（收扇）', '不過……知道還差多少，總比閉著眼挨餓強。', 'smile']] },
-    ] } },
-    [HERO_NAME, '別誇了，我今天連晚飯在哪兒都不知道。'],
-    ['顧文淵', '我手上有幾頁舊軍糧記錄，提到「青石北倉」和「蘇記商行」。真偽難辨，改日再細說。', 'think'],
-  ], effects: [{ type: 'set_flag', key: 'ch03_tiles' }, { type: 'set_flag', key: 'gu_met' }, { type: 'log', text: '從顧文淵處聽說「青石北倉」「蘇記商行」（真偽未知）' }] },
   dlg_gu_idle: { lines: [['顧文淵', '巧婦難為無米之炊。你有良策，也得先有米。', 'sigh']] },
   // ===== 第 4 章 =====
   // 發現血跡分四段：鏡頭停頓看見血點 → 玩家自己按 E 調查 → 沿路血點引導 → 聽見交手、鏡頭移向前方
@@ -1136,9 +1091,10 @@ const STORY_EVENTS = [
   { id: 'ch02_too_close', map: 'wildwood', area: [CH02.site.x - 40, CH02.site.y + 20, 130], once: false, if: { allFlags: ['ch01_voice'], notFlags: ['ch02_rescued'] }, dialogue: 'dlg_ch02_too_close' },
   { id: 'ch02_to_village', map: 'wildwood', area: [WW_EAST.x - 60, WW_EAST.y, 110], if: { allFlags: ['ch02_walk'], notFlags: ['ch02_entered'] }, dialogue: 'dlg_ch02_to_village' },
   { id: 'ch02_porridge', map: 'village', area: [CH02.granary.x, CH02.granary.y, 140], if: { allFlags: ['ch02_entered'] }, dialogue: 'dlg_ch02_porridge' },
-  { id: 'ch02_chief', map: 'village', area: [CH02.shrine.x, CH02.shrine.y, 150], if: { allFlags: ['ch02_porridge'] }, dialogue: 'dlg_ch02_chief' },
-  { id: 'ch02_h_enter', map: 'in_river', area: [260, 300, 400], if: { allFlags: ['ch02_wu_left'], notFlags: ['wang_house_repaired'] }, dialogue: 'dlg_ch02_h_enter' },
-  { id: 'ch02_night', map: 'in_river', area: [260, 220, 400], if: { allFlags: ['ch02_house_checked'] }, dialogue: 'dlg_ch02_night' },
+  { id: 'ch02_chief', map: 'in_shrine', area: [SHRINE_ROOM.door.x, SHRINE_ROOM.door.y - 20, 130], if: { allFlags: ['ch02_porridge'] }, dialogue: 'dlg_ch02_chief' },
+  { id: 'ch02_at_house', map: 'village', area: [WANG.x, WANG.y + 60, 120], if: { allFlags: ['ch02_led'], notFlags: ['ch02_wu_left'] }, dialogue: 'dlg_ch02_at_house' },
+  { id: 'ch02_h_enter', map: 'in_river', area: [WROOM.mid.x, WROOM.mid.y, 700], if: { allFlags: ['ch02_wu_left'], notFlags: ['wang_house_repaired'] }, dialogue: 'dlg_ch02_h_enter' },
+  { id: 'ch02_night', map: 'in_river', area: [WROOM.mid.x, WROOM.mid.y, 700], if: { allFlags: ['ch02_house_checked'] }, dialogue: 'dlg_ch02_night' },
   { id: 'ch01_tracks', map: 'forest', area: [FO_TRACKS.x, FO_TRACKS.y, 80], if: { notFlags: ['ch01_voice'] }, dialogue: 'dlg_ch01_tracks' },
   { id: 'ch01_voice_early', map: 'forest', area: [FO_SHADOW.x, FO_SHADOW.y, 90], if: { notFlags: ['ch01_shadow'] }, dialogue: 'dlg_ch01_voice_early' },
   { id: 'ch04_notice', map: 'forest', area: [FO_BLOOD.x, FO_BLOOD.y, 170], if: { allFlags: ['ch04_ready'] }, dialogue: 'dlg_ch04_notice' },
@@ -1174,13 +1130,10 @@ const STORY_SPOTS = [
     talk: [[{ notFlags: ['ch01_water'] }, 'dlg_ch01_spring', true], [null, 'dlg_ch01_spring_again']] },
   { id: 'wang_gate', map: 'village', x: WANG.x, y: WANG.y + 14, r: 70, name: '王宅', if: { allFlags: ['ch02_complete'] },
     talk: [
-      [{ notFlags: ['ch03_inspect'] }, 'dlg_ch03_inspect', true],
-      [{ allFlags: ['wang_house_repaired'] }, 'dlg_wang_rest'],
-      [{ allFlags: ['ch03_tools', 'ch03_wound', 'ch03_tiles'], items: { wood: 5 } }, 'dlg_ch03_repair', true],
+      [{ allFlags: ['ch03_complete'] }, 'dlg_wang_rest'],
+      [{ allFlags: ['ch03_drain'], notFlags: ['ch03_door'] }, 'dlg_ch03_door', true],
       [null, 'dlg_ch03_gate_wait'],
     ] },
-  { id: 'wang_tiles', map: 'village', x: WANG.x - 120, y: WANG.y + 40, r: 50, name: '碎瓦堆', if: { allFlags: ['ch03_inspect'], notFlags: ['ch03_tiles'] },
-    talk: [[null, 'dlg_ch03_tiles', true]] },
 ];
 
 // 劇情 NPC（素材未完成者沿用既有走路圖加色調當占位）
@@ -1206,9 +1159,9 @@ const STORY_NPCS = [
     show: { allFlags: ['ch04_blood'], notFlags: ['ch04_fled'] }, talk: [[null, 'dlg_ch04_rescue']] },
   // 村中：公倉前領粥的隊伍、屋簷下的小蓮祖孫
   { id: 'xiaolian', map: 'village', name: '小蓮', art: 'kid', filter: 'hue-rotate(280deg) saturate(1.2) brightness(1.1)', x: CH02.granary.x - 50, y: CH02.granary.y + 75, dir: 1, scale: 1.05,
-    show: { allFlags: ['ch02_entered'] }, talk: [[null, 'dlg_xiaolian']] },
+    show: { allFlags: ['ch02_entered'], notFlags: ['ch03_xl_visit'] }, talk: [[null, 'dlg_xiaolian']] },
   { id: 'grandma', map: 'village', name: '小蓮的奶奶', art: 'liushen', filter: 'grayscale(.6) brightness(1.05)', x: CH02.grandma.x, y: CH02.grandma.y, dir: 3, scale: 1.2, sit: true,
-    show: { allFlags: ['ch02_entered'] }, talk: [[null, 'dlg_grandma']] },
+    show: { allFlags: ['ch02_entered'], notFlags: ['ch03_xl_visit'] }, talk: [[null, 'dlg_grandma']] },
   { id: 'woman_g', map: 'village', name: '分粥的婦人', art: 'mother', x: CH02.granary.x, y: CH02.granary.y - 8, dir: 0, scale: 1.25,
     show: { allFlags: ['ch02_entered'], notFlags: ['ch02_porridge'] }, talk: [[null, 'dlg_ch02_woman']] },
   { id: 'queue1', map: 'village', name: '領粥的老人', art: 'chief', filter: 'grayscale(.9) brightness(1.1)', x: CH02.granary.x - 25, y: CH02.granary.y + 38, dir: 1, scale: 1.2,
@@ -1220,34 +1173,29 @@ const STORY_NPCS = [
     show: { allFlags: ['ch02_entered'], notFlags: ['ch02_porridge'] }, talk: [[null, 'dlg_ch02_wu_village']] },
   { id: 'ruolan_c', map: 'village', name: '沈若蘭', art: 'shenruolan', x: CH02.enter.x + 60, y: CH02.enter.y + 34, dir: 3, scale: 1.35,
     show: { allFlags: ['ch02_entered'], notFlags: ['ch02_porridge'] }, talk: [[null, 'dlg_ch02_ruolan_village']] },
-  { id: 'chief_s', map: 'village', name: '陳伯安', art: 'chief', filter: 'grayscale(.8) sepia(.35) brightness(1.15)', x: CH02.shrine.x + 60, y: CH02.shrine.y - 60, dir: 0, scale: 1.3,
+  // 清河祠室內：村長盤問（小說第四幕「老吳帶著沈若蘭、小蝦米走進祠堂」）
+  { id: 'chief_s', map: 'in_shrine', name: '陳伯安', art: 'chief', filter: 'grayscale(.8) sepia(.35) brightness(1.15)', x: SHRINE_ROOM.chief.x, y: SHRINE_ROOM.chief.y, dir: 3, scale: 1.3,
     show: { allFlags: ['ch02_porridge'], notFlags: ['ch02_permit'] }, talk: [] },
-  { id: 'woman_s', map: 'village', name: '分粥的婦人', art: 'mother', x: CH02.shrine.x + 110, y: CH02.shrine.y - 20, dir: 2, scale: 1.25,
+  { id: 'woman_s', map: 'in_shrine', name: '分粥的婦人', art: 'mother', x: SHRINE_ROOM.chief.x + 66, y: SHRINE_ROOM.chief.y + 18, dir: 2, scale: 1.25,
+    show: { allFlags: ['ch02_porridge'], notFlags: ['ch02_permit', 'ch02_woman_out'] }, talk: [] },
+  { id: 'wu_s', map: 'in_shrine', name: '老吳', art: 'woodcutter', x: SHRINE_ROOM.door.x - 40, y: SHRINE_ROOM.door.y - 130, dir: 1, scale: 1.3,
     show: { allFlags: ['ch02_porridge'], notFlags: ['ch02_permit'] }, talk: [] },
-  { id: 'wu_s', map: 'village', name: '老吳', art: 'woodcutter', x: CH02.shrine.x - 70, y: CH02.shrine.y - 10, dir: 3, scale: 1.3,
-    show: { allFlags: ['ch02_porridge'], notFlags: ['ch02_permit'] }, talk: [] },
-  { id: 'ruolan_s', map: 'village', name: '沈若蘭', art: 'shenruolan', x: CH02.shrine.x - 30, y: CH02.shrine.y + 30, dir: 3, scale: 1.35,
+  { id: 'ruolan_s', map: 'in_shrine', name: '沈若蘭', art: 'shenruolan', x: SHRINE_ROOM.door.x - 92, y: SHRINE_ROOM.door.y - 142, dir: 1, scale: 1.35,
     show: { allFlags: ['ch02_porridge'], notFlags: ['ch02_permit'] }, talk: [] },
   { id: 'wu_h', map: 'village', name: '老吳', art: 'woodcutter', x: CH02.road.x + 40, y: CH02.road.y - 6, dir: 3, scale: 1.3,
     show: { allFlags: ['ch02_permit'], notFlags: ['ch02_wu_left'] }, talk: [] },
   // 王宅周圍
   { id: 'ruolan_v', map: 'village', name: '沈若蘭', art: 'shenruolan', x: WANG.x + 20, y: WANG.y + 110, dir: 1, scale: 1.35,
-    show: { allFlags: ['ch02_complete'], notFlags: ['ruolan_in_room'] },
-    talk: [[{ notFlags: ['ch03_wound'], allFlags: ['ch03_inspect'] }, 'dlg_ch03_ruolan'], [{ allFlags: ['ch04_back'], notFlags: ['ch05_ruolan'] }, 'dlg_ch05_call'], [null, 'dlg_ruolan_idle']] },
+    show: { allFlags: ['ch03_treated'], notFlags: ['ruolan_in_room'] },
+    talk: [[{ allFlags: ['ch04_back'], notFlags: ['ch05_ruolan'] }, 'dlg_ch05_call'], [{ notFlags: ['ch03_complete'] }, 'dlg_ch03_ruolan_idle'], [null, 'dlg_ruolan_idle']] },
   // 第 5 章：王宅室內
   { id: 'ruolan_in', map: 'in_river', name: '沈若蘭', art: 'shenruolan', x: WROOM.bed.x + 110, y: WROOM.bed.y + 40, dir: 2, scale: 1.35,
     show: { allFlags: ['ruolan_in_room'] },
     talk: [[{ notFlags: ['ch05_treated'], items: { herb: 3 } }, 'dlg_ch05_treat'], [{ notFlags: ['ch05_treated'] }, 'dlg_ch05_need'], [null, 'dlg_ch05_ruolan_after']] },
   { id: 'chief_in', map: 'in_river', name: '陳伯安', art: 'chief', x: WROOM.bed.x + 230, y: WROOM.bed.y + 60, dir: 2, scale: 1.3,
     show: { allFlags: ['ch05_elders'] }, talk: [[null, 'dlg_ch05_ruolan_after']] },
-  { id: 'gu_in', map: 'in_river', name: '顧文淵', art: 'guwenyuan', x: WROOM.bed.x + 300, y: WROOM.bed.y + 10, dir: 2, scale: 1.35,
+  { id: 'gu_in', map: 'in_river', name: '顧文淵', art: 'guwenyuan', x: WROOM.bed.x + 440, y: WROOM.bed.y + 20, dir: 2, scale: 1.35,
     show: { allFlags: ['ch05_elders'] }, talk: [[null, 'dlg_gu_idle']] },
-  { id: 'smith_v', map: 'village', name: '韓鐵山', art: 'smith', x: WANG.x + 95, y: WANG.y + 70, dir: 2, scale: 1.35,
-    show: { allFlags: ['ch02_complete'], notFlags: ['wang_house_repaired'] },
-    talk: [[{ notFlags: ['ch03_inspect'] }, 'dlg_ch03_smith_early'], [{ notFlags: ['ch03_tools'] }, 'dlg_ch03_smith'], [null, 'dlg_ch03_smith_after']] },
   { id: 'wu_v', map: 'village', name: '老吳', art: 'woodcutter', x: WANG.x - 110, y: WANG.y + 85, dir: 3, scale: 1.3,
-    show: { allFlags: ['ch02_complete'] },
-    talk: [[{ notFlags: ['ch03_wu'] }, 'dlg_ch03_wu'], [{ notFlags: ['wang_house_repaired'] }, 'dlg_ch03_wu_after'], [null, 'dlg_wu_idle']] },
-  { id: 'gu_v', map: 'village', name: '顧文淵', art: 'guwenyuan', x: WANG.x + 150, y: WANG.y + 140, dir: 2, scale: 1.35,
-    show: { allFlags: ['ch03_tiles'] }, talk: [[null, 'dlg_gu_idle']] },
+    show: { allFlags: ['ch03_complete'] }, talk: [[null, 'dlg_wu_idle']] },
 ];

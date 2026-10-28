@@ -78,7 +78,7 @@ const BUILDING_LOOKS = {
   // 吳家：用民宅 A 組
   home: { w: 400, looks: [{ file: '民宅A_破舊', door: [300, 318], at: 0 }, { file: '民宅A_升級', door: [300, 318], at: 40 }] },
   // 王宅破舊版是 560×420 的原尺寸圖，寬度等於顯示寬度時直接用原圖、不縮放（look.w 可個別指定寬度）
-  river: { w: 560, looks: [{ file: '王宅_破舊', door: [205, 308], wang: false }, { file: '王宅_修復', door: [340, 352], wang: true }] },
+  river: { w: 560, looks: [{ file: '王宅_破舊', door: [205, 308], wang: false }, { file: '王宅_修復_v2', door: [206, 314], wang: true }] },
 };
 const BLOOK_IMG = {};
 const EXTRA_ART = ['祠堂', '公倉', '土地公廟'];
@@ -158,6 +158,8 @@ const WELL = { x: 1175, y: 690 + VN };
 // 石階從山腳（y STAIR_BOT）爬到山頂（y STAIR_TOP），平移前的值
 const STAIR_TOP = -220, STAIR_BOT = 180;
 const SHRINE = { x: 1592, y: STAIR_TOP - 110 + VN };
+// 祠堂門口（祠堂.png 正殿台階在錨點右側約 60px）：在這裡按住「上」進入祠堂室內
+const SHRINE_DOOR = { x: SHRINE.x + 60, y: SHRINE.y - 24 };
 // 不長樹的範圍：祠堂四周、石階兩側
 const SHRINE_KEEP = [[SHRINE.x, SHRINE.y - 120, 270], [SHRINE.x, SHRINE.y + 60, 170], ...[-180, -80, 20, 120, 220, 320, 420, 520].map((y) => [1592, y + VN, 80])];
 
@@ -610,6 +612,7 @@ function buildWorld(buildingImgs) {
   const shrine = makeVillageShrine(); shadow(SHRINE.x, SHRINE.y - 6, shrine.img.width * 0.42, 18, 0.3); addSprite(shrine, SHRINE.x, SHRINE.y);
   G.solids.push([SHRINE.x - shrine.img.width * 0.4, SHRINE.y - shrine.img.height * 0.55, SHRINE.x + shrine.img.width * 0.4, SHRINE.y - 30]);
   G.lights.push({ x: SHRINE.x - 60, y: SHRINE.y - 70, r: 110, c: '255,170,90' }, { x: SHRINE.x + 60, y: SHRINE.y - 70, r: 110, c: '255,170,90' });
+  G.buildings.push({ id: 'shrine', name: '清河祠', doorX: SHRINE_DOOR.x, doorY: SHRINE_DOOR.y });
   // 道具
   const well = makeWell(); shadow(WELL.x, WELL.y - 4, 50, 14, 0.2); addSprite(well, WELL.x, WELL.y); G.circles.push([WELL.x, WELL.y - 18, 46]);
   const gate = makeGate(), pdx = Math.round(GATE_ART.pillarDx * GATE_ART.s); addSprite(gate, GATE.x, GATE.y);

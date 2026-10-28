@@ -4,10 +4,11 @@
 
 // ---------- CG：有檔案就顯示，沒有就畫一張佔位圖，不會黑畫面 ----------
 // 檔案放 assets/cg/；佔位圖寫上 CG ID 與構圖說明，方便美術對照補圖
+// push：慢推鏡頭的焦點（CSS transform-origin），對應開發劇本「慢推」「慢推向碗」「慢推向主角臉」
 const CH02_CG = {
-  ch02_forest_rescue: { file: 'cg/第2章_林道呼救.png', note: '野林、跌坐的沈若蘭、翻倒的藥簍與小鋤、兩名惡徒' },
-  ch02_porridge: { file: 'cg/第2章_半碗粥.png', note: '小蓮把稀粥推給祖母，小蝦米在後方靜靜看著' },
-  ch02_first_night: { file: 'cg/第2章_第一夜.png', note: '王宅舊木床旁，小蝦米看著手機，冷光與月光' },
+  ch02_forest_rescue: { file: 'cg/第2章_林道呼救.png', note: '野林、跌坐的沈若蘭、翻倒的藥簍與小鋤、兩名惡徒', push: '50% 50%' },
+  ch02_porridge: { file: 'cg/第2章_半碗粥.png', note: '小蓮把稀粥推給祖母，小蝦米在後方靜靜看著', push: '50% 62%' },
+  ch02_first_night: { file: 'cg/第2章_第一夜.png', note: '王宅舊木床旁，小蝦米看著手機，冷光與月光', push: '40% 26%' },
 };
 const cgPh = {};
 function cgPlaceholder(id) {
@@ -26,6 +27,7 @@ function showCh02Cg(id) {
   const def = CH02_CG[id];
   if (!def) return showCg(null);
   showCg(def.file);
+  const el = $('cg'); el.style.transformOrigin = def.push; void el.offsetWidth; el.classList.add('push');
   // 圖讀不到就換成佔位圖（#cg 仍保持開啟，對話照常疊在上面）
   const img = new Image();
   img.onerror = () => { const el = $('cg'); if (el.classList.contains('on') && el.style.backgroundImage.includes(def.file)) el.style.backgroundImage = `url("${cgPlaceholder(id)}")`; };
@@ -71,6 +73,8 @@ Object.assign(Sfx, {
     toneHit(ac, t, { type: 'sawtooth', f0: 180, f1: 120, dur: 0.5, v: 0.05 });
     noiseHit(ac, t + 0.55, { f: 1400, q: 1.5, dur: 0.12, v: 0.35 }); toneHit(ac, t + 0.55, { type: 'triangle', f0: 260, f1: 160, dur: 0.15, v: 0.3 });
   },
+  // 牌匾砸地：悶悶的木頭「咚」加一陣塵土
+  plaqueFall() { const ac = this.ctx(); if (!ac) return; const t = ac.currentTime + 0.02; toneHit(ac, t, { type: 'triangle', f0: 150, f1: 60, dur: 0.3, v: 0.45 }); noiseHit(ac, t, { type: 'lowpass', f: 1200, dur: 0.25, v: 0.3 }); },
   // 揪住衣服：布料被扯緊的「嘶」
   cloth() { const ac = this.ctx(); if (!ac) return; const t = ac.currentTime + 0.02; noiseHit(ac, t, { type: 'highpass', f: 2400, dur: 0.22, v: 0.22 }); noiseHit(ac, t + 0.05, { f: 900, q: 0.8, dur: 0.12, v: 0.15 }); },
   // 雨滴「滴答」
@@ -139,14 +143,236 @@ function rainDrops(dur = 9) {
     ctx.globalAlpha = 1;
   } });
 }
-// 屋頂破洞：月光照在地上的一塊光斑（王宅修好前才有）
+// S12 門板掉落：門框上的腐朽木片晃兩下、翻轉落地、彈一下揚起灰塵；之後躺在門前，王宅修好才清掉
+const DOOR_CHIP_REST = 1.42;
+let doorChipFalling = false;
+function doorChipPos() { const b = bld('river'); return { sx: b.doorX - 16, sy: b.doorY - 52, ex: b.doorX - 30, ey: b.doorY + 14 }; }
+function drawDoorChip(x, y, a, g = ctx) {
+  g.save(); g.translate(Math.round(x), Math.round(y)); g.rotate(a);
+  g.fillStyle = '#2a1a0c'; g.fillRect(-5, -15, 10, 30);
+  g.fillStyle = '#6a4a2a'; g.fillRect(-4, -14, 8, 28);
+  g.fillStyle = '#8a6a40'; g.fillRect(-4, -14, 2, 28);
+  g.fillStyle = '#4a3018'; g.fillRect(0, -8, 1, 10); g.fillRect(-2, 6, 1, 6);
+  g.fillStyle = '#9a9a9a'; g.fillRect(-1, -12, 2, 2);
+  g.restore();
+}
+function doorChipFall() {
+  const { sx, sy, ex, ey } = doorChipPos(), dur = 1.3;
+  doorChipFalling = true; F().ch02_door_chip = 1; Sfx.doorFall(); plaqueFall();
+  worldFx.push({ t: 0, dur, draw(p) {
+    const t = p * dur;
+    let x = sx, y = sy, a = 0;
+    if (t < 0.45) a = Math.sin(t * 38) * 0.09 * (t / 0.45);
+    else if (t < 0.6) { const k = (t - 0.45) / 0.15; x = sx + (ex - sx) * k; y = sy + (ey - sy) * k * k; a = DOOR_CHIP_REST * k; }
+    else { const k = Math.min(1, (t - 0.6) / 0.22); x = ex; y = ey - Math.sin(k * Math.PI) * 5; a = DOOR_CHIP_REST + Math.sin(k * Math.PI) * 0.12; }
+    drawDoorChip(x - cam.x, y - cam.y, a);
+    if (t > 0.58) {
+      const q = Math.min(1, (t - 0.58) / 0.7);
+      ctx.fillStyle = `rgba(170,140,100,${0.4 * (1 - q)})`;
+      for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(ex - cam.x + (i - 1.5) * 12, ey + 4 - cam.y - q * 8, 5 + q * 12, 0, Math.PI * 2); ctx.fill(); }
+    }
+    if (p >= 1) doorChipFalling = false;
+  } });
+  setTimeout(() => { doorChipFalling = false; shakeScreen(140, 2); }, dur * 1000);
+}
+// 第 2 章推門後匾額、門板木片就在地上；走完第 2 章卻沒有推門旗標的存檔也當作已掉落（第 3 章要撿起來掛回去）
+const plaqueDown = () => F().ch02_door_chip || F().ch02_complete;
+// 躺在地上的匾額與木片是依 y 排序的圖：王宅圖的台階會蓋住地面層，所以不能畫在地面層
+let restSp = null;
+function drawDoorChipRest() {
+  const R = MAPS.village; if (G.id !== 'village' || !R) return;
+  if (!restSp) {
+    const p = plaquePos(), d = doorChipPos();
+    const [pc, pg] = canvas(72, 40); pg.translate(6, 12); pg.scale(1, 0.7); pg.rotate(PLAQUE_REST); pg.drawImage(plaqueImg || (plaqueImg = makePlaque()), -4, -1);
+    const [dc, dg] = canvas(40, 40); drawDoorChip(20, 20, DOOR_CHIP_REST, dg);
+    const empty = canvas(1, 1)[0];
+    restSp = { empty, plaque: { img: empty, full: pc, x: p.lx, y: p.ly + 16, ax: 6, ay: 28 }, chip: { img: empty, full: dc, x: d.ex, y: d.ey + 8, ax: 20, ay: 28 } };
+    R.sprites.push(restSp.plaque, restSp.chip);
+  }
+  // 第 3 章：匾額掛回去（ch03_sign）、門修好（ch03_door）後就不再躺在地上
+  const f = F(), down = plaqueDown();
+  restSp.plaque.img = down && !plaqueFalling && !signRising && !f.ch03_sign ? restSp.plaque.full : restSp.empty;
+  restSp.chip.img = down && !doorChipFalling && !f.ch03_door ? restSp.chip.full : restSp.empty;
+}
+
+// 王宅牌匾：門樓樑下歪掛一塊破牌匾（只剩左邊一根釘子），推門時順著釘子盪下來、釘子鬆脫砸在地上
+// 位置以王宅門口（bld('river') 的 doorX/doorY）為準：王宅_破舊.png 門樓橫樑在門口上方約 60px
+const PLAQUE_TILT = 0.16, PLAQUE_DROP = 1.35, PLAQUE_REST = -0.1;
+let plaqueImg = null, plaqueSp = null, plaqueFalling = false;
+function plaquePos() { const b = bld('river'); return { nx: b.doorX - 26, ny: b.doorY - 64, lx: b.doorX + 16, ly: b.doorY + 22 }; }
+function makePlaque() {
+  const [c, g] = canvas(56, 24);
+  g.fillStyle = '#1e140c'; g.fillRect(0, 0, 56, 24);
+  g.fillStyle = '#4a3220'; g.fillRect(3, 3, 50, 18); g.fillStyle = '#5c4028'; g.fillRect(3, 3, 50, 3);
+  g.fillStyle = '#2a1c10'; g.fillRect(6, 14, 15, 1); g.fillRect(34, 6, 1, 11); g.fillRect(35, 16, 9, 1);
+  g.font = 'bold 15px "Noto Serif TC","PMingLiU",serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#a8884a'; g.fillText('王', 17, 13); g.globalAlpha = 0.55; g.fillText('宅', 39, 13); g.globalAlpha = 1;
+  g.fillStyle = '#4a3220'; g.fillRect(40, 8, 4, 4); g.fillRect(35, 15, 3, 4); g.fillRect(14, 16, 3, 3);
+  g.clearRect(48, 16, 8, 8); g.clearRect(52, 13, 4, 3);
+  g.fillStyle = '#1e140c'; g.fillRect(47, 16, 1, 6); g.fillRect(48, 15, 4, 1); g.fillRect(52, 12, 1, 1);
+  g.fillStyle = '#4a6a2a'; g.fillRect(0, 0, 7, 3); g.fillRect(0, 3, 3, 4); g.fillStyle = '#6a8a3a'; g.fillRect(1, 0, 3, 1);
+  return c;
+}
+// x, y：釘子（牌匾左上角）的畫面座標；sy：躺在地上時縱向壓扁
+function drawPlaque(x, y, a, sy = 1) {
+  plaqueImg = plaqueImg || makePlaque();
+  ctx.save(); ctx.translate(Math.round(x), Math.round(y)); ctx.scale(1, sy); ctx.rotate(a); ctx.drawImage(plaqueImg, -4, -1); ctx.restore();
+}
+// 掛在門樓上的牌匾是依 y 排序的圖片，疊在王宅圖上、被站在門前的人擋住
+function syncPlaque() {
+  const R = MAPS.village; if (!R) return;
+  const p = plaquePos();
+  if (!plaqueSp) {
+    plaqueImg = plaqueImg || makePlaque();
+    const [c, g] = canvas(76, 56), ncx = 8, ncy = 6;
+    g.save(); g.translate(ncx, ncy); g.rotate(PLAQUE_TILT); g.drawImage(plaqueImg, -4, -1); g.restore();
+    g.fillStyle = '#8a8a86'; g.fillRect(ncx - 1, ncy - 1, 2, 2);
+    plaqueSp = { hang: c, img: c, x: p.nx, y: bld('river').doorY + 0.5, ax: ncx, ay: bld('river').doorY + 0.5 - p.ny + ncy };
+    R.sprites.push(plaqueSp);
+  }
+  const f = F(), show = !plaqueDown() && !f.wang_house_repaired;
+  // 第 3 章重新掛回的匾額：端端正正，兩顆釘子
+  if (f.ch03_sign && !plaqueSp.straight) {
+    const [c, g] = canvas(76, 56), ncx = 8, ncy = 6;
+    g.drawImage(plaqueImg, ncx - 4, ncy - 1);
+    g.fillStyle = '#8a8a86'; g.fillRect(ncx - 1, ncy - 1, 2, 2); g.fillRect(ncx + 47, ncy - 1, 2, 2);
+    plaqueSp.straight = c;
+  }
+  plaqueSp.img = signRising ? canvas(1, 1)[0] : f.ch03_sign ? plaqueSp.straight : show ? plaqueSp.hang : canvas(1, 1)[0];
+}
+// 推門：先抖一下 → 順著釘子盪成垂直 → 晃兩下 → 釘子鬆脫掉下 → 砸地彈起揚塵
+function plaqueFall() {
+  const p = plaquePos(), dur = 2.0;
+  plaqueFalling = true; if (plaqueSp) plaqueSp.img = canvas(1, 1)[0];
+  worldFx.push({ t: 0, dur, draw(q) {
+    const t = q * dur;
+    let x = p.nx, y = p.ny, a = PLAQUE_TILT, sy = 1;
+    if (t < 0.3) a = PLAQUE_TILT + Math.sin(t * 50) * 0.04;
+    else if (t < 0.75) { const k = (t - 0.3) / 0.45, e = 1 + 2.2 * Math.pow(k - 1, 3) + 1.2 * Math.pow(k - 1, 2); a = PLAQUE_TILT + (PLAQUE_DROP - PLAQUE_TILT) * e; }
+    else if (t < 1.05) a = PLAQUE_DROP + Math.sin((t - 0.75) * 18) * 0.12 * (1 - (t - 0.75) / 0.3);
+    else if (t < 1.3) { const k = (t - 1.05) / 0.25; x = p.nx + (p.lx - p.nx) * k; y = p.ny + (p.ly - p.ny) * k * k; a = PLAQUE_DROP + (PLAQUE_REST - PLAQUE_DROP) * k; sy = 1 - 0.3 * k; }
+    else { const k = Math.min(1, (t - 1.3) / 0.22); x = p.lx; y = p.ly - Math.sin(k * Math.PI) * 4; a = PLAQUE_REST + Math.sin(k * Math.PI) * 0.1; sy = 0.7; }
+    if (t < 1.05) { ctx.fillStyle = '#8a8a86'; ctx.fillRect(Math.round(p.nx - cam.x) - 1, Math.round(p.ny - cam.y) - 1, 2, 2); }
+    drawPlaque(x - cam.x, y - cam.y, a, sy);
+    if (t > 1.28) {
+      const d = Math.min(1, (t - 1.28) / 0.7), cx = p.lx + 24 - cam.x, cy = p.ly + 10 - cam.y;
+      ctx.fillStyle = `rgba(170,140,100,${0.45 * (1 - d)})`;
+      for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.arc(cx + (i - 2) * 11, cy - d * 8, 5 + d * 13, 0, Math.PI * 2); ctx.fill(); }
+    }
+  } });
+  setTimeout(() => { Sfx.plaqueFall(); shakeScreen(200, 3); }, 1300);
+  setTimeout(() => { plaqueFalling = false; }, dur * 1000);
+}
+// 低頭看：匾額在地上「還沒死透」再左右晃一下才停住，木片與匾額周圍的灰慢慢飄散
+function debrisSettle() {
+  const p = plaquePos(), { ex, ey } = doorChipPos(), dur = 1.4;
+  plaqueFalling = true;
+  const motes = Array.from({ length: 10 }, (_, i) => ({ x: (i < 6 ? p.lx + 24 : ex) + (hash2(i, 7) - 0.5) * 50, y: (i < 6 ? p.ly + 8 : ey) + (hash2(i, 3) - 0.5) * 10, r: 4 + hash2(i, 5) * 6 }));
+  worldFx.push({ t: 0, dur, draw(q) {
+    const t = q * dur, w = t < 0.7 ? Math.sin(t / 0.7 * Math.PI * 2) * 0.07 * (1 - t / 0.7) : 0;
+    drawPlaque(p.lx - cam.x, p.ly - cam.y - Math.abs(w) * 12, PLAQUE_REST + w, 0.7);
+    for (const m of motes) {
+      ctx.fillStyle = `rgba(170,140,100,${0.28 * (1 - q)})`;
+      ctx.beginPath(); ctx.arc(m.x - cam.x + Math.sin(t * 2 + m.r) * 6 * q, m.y - cam.y - q * 14, m.r + q * 8, 0, Math.PI * 2); ctx.fill();
+    }
+  } });
+  setTimeout(() => { plaqueFalling = false; }, 700);
+}
+
+// S15 床倒：王宅舊床以左側床腳為支點傾斜約 10°（右端翻起），王宅修好前保持歪斜
+const BED_TILT = -0.17;
+// 床畫在王宅底圖上：從底圖裁出床（WROOM.bedBox）當成獨立圖片，平常不顯示，歪斜時才畫旋轉後的床，原位蓋一層陰影
+let bedSp = null;
+function wangBed() {
+  if (bedSp) return bedSp;
+  const R = MAPS.in_river; if (!R) return null;
+  const [x0, y0, x1, y1] = WROOM.bedBox, [c, g] = canvas(x1 - x0, y1 - y0);
+  g.drawImage(R.groundBase || R.ground, x0, y0, x1 - x0, y1 - y0, 0, 0, x1 - x0, y1 - y0);
+  bedSp = { img: canvas(1, 1)[0], img0: c, x: WROOM.bed.x, y: WROOM.bed.y, ax: 0, ay: 0, ax0: WROOM.bed.x - x0, ay0: y1 - y0, tilt: 0 };
+  R.sprites.push(bedSp);
+  return bedSp;
+}
+function setBedTilt(a) {
+  const s = wangBed(); if (!s || s.tilt === a) return;
+  s.tilt = a;
+  if (!a) { Object.assign(s, { img: canvas(1, 1)[0], ax: 0, ay: 0 }); return; }
+  const src = s.img0, [c, g] = canvas(src.width + 60, src.height + 80), px = 40, py = s.ay0 + 60;
+  g.translate(px, py); g.rotate(a); g.drawImage(src, 0, -s.ay0);
+  Object.assign(s, { img: c, ax: px + s.ax0, ay: py });
+}
+function drawBedShadow() {
+  const s = bedSp; if (!s || !s.tilt) return;
+  const [x0, y0, x1, y1] = WROOM.bedBox;
+  ctx.fillStyle = 'rgba(14,9,5,.72)'; ctx.fillRect(Math.round(x0 - cam.x), Math.round(y0 - cam.y), x1 - x0, y1 - y0);
+}
+function bedTiltFall() {
+  F().ch02_bed_tilt = 1;
+  tweenActor(null, 420, (p) => setBedTilt(p < 0.6 ? BED_TILT * (p / 0.6) : BED_TILT * (1 + Math.sin((p - 0.6) / 0.4 * Math.PI) * 0.15)));
+}
+function syncBedTilt() {
+  const f = F(), s = wangBed(); if (!s) return;
+  const want = f.ch02_bed_tilt && !f.wang_house_repaired ? BED_TILT : 0;
+  if ((s.tilt === 0) !== (want === 0)) setBedTilt(want);
+  drawBedShadow();
+}
+
+// 屋頂破洞：從破洞斜照下來的一道月光、地上的光斑與碎瓦、飄浮的灰塵（王宅修好前才有）
+const ROOF_TOP = { x: 268, y: 96 };
+let tilesImg = null;
+function makeTiles() {
+  const [c, g] = canvas(64, 26);
+  const tile = (x, y, w, h, a) => {
+    g.save(); g.translate(x, y); g.rotate(a);
+    g.fillStyle = '#3a3a40'; g.fillRect(-w / 2, -h / 2 + 2, w, h);
+    g.fillStyle = '#6a6a72'; g.fillRect(-w / 2, -h / 2, w, h);
+    g.fillStyle = '#8a8a94'; g.fillRect(-w / 2, -h / 2, w, 2);
+    g.fillStyle = '#4a4a52'; g.fillRect(-w / 2 + 3, -h / 2 + 3, 1, h - 4); g.fillRect(-w / 2 + w - 4, -h / 2 + 3, 1, h - 4);
+    g.restore();
+  };
+  tile(14, 14, 16, 9, -0.35); tile(34, 9, 14, 8, 0.5); tile(48, 17, 12, 7, -0.1); tile(26, 19, 9, 5, 1.1);
+  g.fillStyle = '#5a5a62'; for (const [x, y] of [[6, 22], [41, 22], [57, 8], [22, 4], [31, 23]]) g.fillRect(x, y, 3, 2);
+  return (tilesImg = c);
+}
 function drawRoofHole() {
   if (G.id !== 'in_river' || F().wang_house_repaired) return;
-  const x = WHOLE.x - cam.x, y = WHOLE.y - cam.y;
-  ctx.save(); ctx.globalAlpha = 0.18; ctx.fillStyle = '#d8e4ff';
-  ctx.beginPath(); ctx.ellipse(x, y, 46, 18, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.globalAlpha = 0.28; ctx.beginPath(); ctx.ellipse(x, y, 24, 9, 0, 0, Math.PI * 2); ctx.fill();
+  const x = WHOLE.x - cam.x, y = WHOLE.y - cam.y, tx = ROOF_TOP.x - cam.x, ty = ROOF_TOP.y - cam.y, t = performance.now();
+  ctx.save();
+  const gr = ctx.createLinearGradient(tx, ty, x, y); gr.addColorStop(0, 'rgba(216,228,255,.32)'); gr.addColorStop(1, 'rgba(216,228,255,.08)');
+  ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(tx - 34, ty); ctx.lineTo(tx + 34, ty); ctx.lineTo(x + 50, y); ctx.lineTo(x - 50, y); ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = 0.22; ctx.fillStyle = '#d8e4ff';
+  ctx.beginPath(); ctx.ellipse(x, y, 52, 20, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 0.3; ctx.beginPath(); ctx.ellipse(x, y, 28, 10, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1; ctx.drawImage(tilesImg || makeTiles(), Math.round(x - 30), Math.round(y - 8));
+  ctx.fillStyle = '#e8eeff';
+  for (let i = 0; i < 9; i++) {
+    const k = ((t / 5200 + i / 9) % 1), px = tx + (x - tx) * k + Math.sin(t / 900 + i * 2.1) * 18, py = ty + (y - ty) * k;
+    ctx.globalAlpha = 0.5 * Math.sin(k * Math.PI); ctx.fillRect(Math.round(px), Math.round(py), 2, 2);
+  }
   ctx.restore();
+}
+
+// 王宅門框：門口右側掉下來的一截門框與碎木、生鏽的釘子（調查點「門框」）
+let frameImg = null;
+function makeFrameDebris() {
+  const [c, g] = canvas(78, 40);
+  g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.ellipse(40, 32, 36, 6, 0, 0, Math.PI * 2); g.fill();
+  g.save(); g.translate(40, 22); g.rotate(-0.18);
+  g.fillStyle = '#3a2412'; g.fillRect(-32, -4, 60, 11);
+  g.fillStyle = '#6e4a28'; g.fillRect(-32, -6, 60, 10);
+  g.fillStyle = '#8a6036'; g.fillRect(-32, -6, 60, 2);
+  g.fillStyle = '#4a2e16'; for (const x of [-22, -6, 10]) g.fillRect(x, -4, 9, 1);
+  g.fillStyle = '#6e4a28'; g.beginPath(); g.moveTo(28, -6); g.lineTo(36, -3); g.lineTo(30, -1); g.lineTo(37, 2); g.lineTo(28, 4); g.closePath(); g.fill();
+  g.fillStyle = '#8a3a1a'; g.fillRect(-26, -9, 2, 5); g.fillStyle = '#5a2a14'; g.fillRect(-27, -10, 4, 2);
+  g.restore();
+  const chip = (x, y, w, a) => { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = '#5a3a1e'; g.fillRect(-w / 2, -2, w, 4); g.fillStyle = '#9a6e40'; g.fillRect(-w / 2, -2, w, 1); g.restore(); };
+  chip(12, 33, 14, 0.6); chip(62, 34, 12, -0.4); chip(70, 26, 8, 1.2); chip(22, 26, 7, -0.9);
+  g.fillStyle = '#9a9a9a'; g.fillRect(52, 35, 5, 1); g.fillRect(56, 34, 1, 3);
+  return (frameImg = c);
+}
+function drawWangProps() {
+  if (G.id !== 'in_river' || F().wang_house_repaired) return;
+  const d = frameImg || makeFrameDebris();
+  ctx.drawImage(d, Math.round(WROOM.door.x + 50 - 39 - cam.x), Math.round(WROOM.door.y - 30 - 28 - cam.y));
 }
 
 // 挨棍（hero_hurt.png 第 1–3 格）、跌坐（hero_sit.png）
@@ -160,7 +386,9 @@ Object.assign(STORY_HOOKS, {
   throwStone: () => holdFor(1200, () => throwStone(CH02.fogBush.x, CH02.fogBush.y)),
   hurt: () => { Sfx.club(); shakeScreen(320, 7); emote('player', '!'); playPose(heroHurtImg, HURT_SEQ, false); },
   rainDrops: (e) => rainDrops(e.dur),
-  bedFall: () => { Sfx.bedFall(); shakeScreen(380, 8); playPose(heroSitImg, SIT_DOWN.slice(0, 5), true); },
+  bedFall: () => { Sfx.bedFall(); shakeScreen(380, 8); bedTiltFall(); playPose(heroSitImg, SIT_DOWN.slice(0, 5), true); },
+  doorChip: () => doorChipFall(),
+  debrisSettle: () => debrisSettle(),
   clearPose: () => { poseImg = null; lookFr = null; },
   emote: (e) => emote(e.who, e.icon),
   // 投石後：兩名惡徒一起冒驚嘆號、轉頭望向南邊的樹叢

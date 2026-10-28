@@ -223,6 +223,7 @@ h4{margin:14px 0 4px;color:#e9c987;font-family:"Noto Serif TC","PMingLiU",serif}
 .game.intactics .hud,.game.intactics .quest,.game.intactics #mini,.game.intactics .vhud{visibility:hidden}
 /* 淡出 */
 .cg{position:absolute;inset:0;background:#000 center/cover no-repeat;opacity:0;pointer-events:none;transition:opacity .8s,background-image .8s}.cg.on{opacity:1}
+.cg.push{animation:cgPush 16s ease-out forwards}@keyframes cgPush{from{transform:scale(1)}to{transform:scale(1.08)}}
 #cgUi>div{position:absolute;box-sizing:border-box}
 .cgui-popup{display:flex;align-items:center;justify-content:center;text-align:center;white-space:pre-line;font-family:"Noto Serif TC","PMingLiU",serif;color:#1d3150;line-height:1.7;letter-spacing:.12em;text-shadow:0 0 .4em #fff}
 .cgui-phone{padding:3.2em .9em 1em;color:#e8eef5;font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;background:radial-gradient(circle at 50% 30%,#1c2a40,#05070c 75%);border-radius:1.4em}
@@ -377,6 +378,7 @@ ul.log{list-style:none;padding:0;margin:0;font-size:13px;max-height:260px;overfl
 <script src="js/story.js"></script>
 <script src="js/ch01.js"></script>
 <script src="js/ch02.js"></script>
+<script src="js/ch03.js"></script>
 <script src="js/skilltree.js"></script>
 <script src="js/game.js"></script>
 <script src="js/battle.js"></script>

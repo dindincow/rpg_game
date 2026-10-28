@@ -150,6 +150,41 @@ function fPlant() {
   for (let i = 0; i < 14; i++) { const a = -Math.PI / 2 + (i - 7) * 0.22, len = 18 + (i % 3) * 7; for (let t = 4; t < len; t += 3) { g.fillStyle = lv[Math.min(3, (t / 6) | 0)]; g.fillRect(25 + Math.cos(a) * t - 2, 44 + Math.sin(a) * t, 4, 3); } }
   return { img: c, ax: 25, ay: 68, solid: [-13, -10, 13, 0] };
 }
+// 祠堂供桌：後方牌位龕、紅漆供桌、香爐、一對紅燭、供品
+function fAltar() {
+  const [c, g] = canvas(200, 120);
+  g.fillStyle = '#00000040'; g.fillRect(8, 110, 184, 8);
+  g.fillStyle = '#2a1408'; g.fillRect(24, 0, 152, 8);
+  g.fillStyle = '#3a1a10'; g.fillRect(30, 6, 140, 60); g.fillStyle = '#5a2a18'; g.fillRect(34, 10, 132, 52);
+  for (let i = 0; i < 7; i++) { const x = 40 + i * 18; g.fillStyle = '#2a1408'; g.fillRect(x, 14, 14, 44); g.fillStyle = '#b8903e'; g.fillRect(x + 2, 16, 10, 40); g.fillStyle = '#3a2210'; g.fillRect(x + 6, 22, 2, 28); }
+  g.fillStyle = '#6a1e14'; g.fillRect(8, 64, 184, 16); g.fillStyle = '#8a2a1a'; g.fillRect(8, 64, 184, 4);
+  g.fillStyle = '#4a140c'; g.fillRect(14, 80, 10, 32); g.fillRect(176, 80, 10, 32);
+  g.fillStyle = '#5a1a10'; g.fillRect(14, 80, 172, 10); g.fillStyle = '#c9a045'; g.fillRect(14, 88, 172, 2);
+  g.fillStyle = '#4a4a44'; g.fillRect(88, 50, 24, 14); g.fillStyle = '#6a6a60'; g.fillRect(84, 46, 32, 5);
+  g.fillStyle = '#e8e8e8a0'; g.fillRect(98, 30, 2, 16); g.fillRect(104, 26, 2, 20);
+  for (const x of [52, 144]) { g.fillStyle = '#b82a1e'; g.fillRect(x, 44, 6, 20); g.fillStyle = '#ffd070'; g.fillRect(x + 1, 38, 4, 6); }
+  for (const x of [64, 120]) { g.fillStyle = '#d8d0b8'; g.fillRect(x, 58, 16, 6); g.fillStyle = '#c86a2a'; g.fillRect(x + 2, 54, 12, 5); }
+  return { img: c, ax: 100, ay: 112, solid: [-92, -50, 92, 0] };
+}
+function fCushion() {
+  const [c, g] = canvas(36, 20);
+  g.fillStyle = '#00000030'; g.beginPath(); g.ellipse(18, 14, 16, 5, 0, 0, 7); g.fill();
+  g.fillStyle = '#7a2a1a'; g.beginPath(); g.ellipse(18, 10, 16, 7, 0, 0, 7); g.fill();
+  g.fillStyle = '#a8402a'; g.beginPath(); g.ellipse(18, 8, 13, 4, 0, 0, 7); g.fill();
+  return { img: c, ax: 18, ay: 16 };
+}
+// 村長對帳的小木桌：舊帳簿、算盤、半盞涼茶
+function fDesk() {
+  const [c, g] = canvas(96, 60);
+  g.fillStyle = '#00000040'; g.fillRect(6, 50, 84, 8);
+  g.fillStyle = '#3e2a17'; g.fillRect(8, 30, 7, 24); g.fillRect(81, 30, 7, 24);
+  g.fillStyle = '#4a321c'; g.fillRect(4, 18, 88, 14); g.fillStyle = '#7a5530'; g.fillRect(4, 18, 88, 10); g.fillStyle = '#a07648'; g.fillRect(4, 18, 88, 3);
+  g.fillStyle = '#e8dcb8'; g.fillRect(12, 10, 26, 10); g.fillStyle = '#5a4a3a'; g.fillRect(25, 10, 1, 10);
+  g.fillStyle = '#8a7a6a'; g.fillRect(14, 13, 9, 1); g.fillRect(14, 16, 9, 1); g.fillRect(28, 13, 8, 1); g.fillRect(28, 16, 8, 1);
+  g.fillStyle = '#3a2210'; g.fillRect(44, 8, 26, 11); g.fillStyle = '#c03828'; for (let x = 46; x < 68; x += 4) { g.fillRect(x, 10, 2, 3); g.fillRect(x, 15, 2, 2); }
+  g.fillStyle = '#d8e0e8'; g.fillRect(76, 12, 8, 7); g.fillStyle = '#3a5a8a'; g.fillRect(76, 14, 8, 2);
+  return { img: c, ax: 48, ay: 54, solid: [-44, -22, 44, 0] };
+}
 function fBarrel() {
   const [c, g] = canvas(40, 50);
   g.fillStyle = '#00000040'; g.fillRect(4, 44, 32, 5);
@@ -167,7 +202,10 @@ function buildBgRoom(def) {
   if (!img) throw new Error('缺少室內底圖：assets/interiors/' + def.bg + '.png');
   const f = def.w / img.width, w = def.w, h = Math.round(img.height * f), sc = (v) => Math.round(v * f);
   const [c, g] = canvas(w, h); g.imageSmoothingQuality = 'high'; g.drawImage(img, 0, 0, w, h);
-  const R = { id: 'in_' + def.id, name: def.name, W: w, H: h, f, interior: true, outside: def.id, door: sc(def.door), ground: c, sprites: [], solids: [], circles: [], lights: [], shimmers: [], buildings: [], water: () => false };
+  const R = { id: 'in_' + def.id, name: def.name, W: w, H: h, f, interior: true, outside: def.id, door: sc(def.door), ground: c, groundBase: c, sprites: [], solids: [], circles: [], lights: [], shimmers: [], buildings: [], water: () => false };
+  // 另一張同構圖的底圖（如修繕後的王宅），進房時依 altFlag 切換
+  const alt = def.bgAlt && ROOM_BG[def.bgAlt];
+  if (alt) { const [c2, g2] = canvas(w, h); g2.imageSmoothingQuality = 'high'; g2.drawImage(alt, 0, 0, w, h); Object.assign(R, { groundAlt: c2, altFlag: def.altFlag }); }
   for (const s of def.solids) R.solids.push(s.map(sc));
   for (const [x, y, r = 150] of def.lights) R.lights.push({ x: sc(x), y: sc(y), r, c: '255,170,100' });
   for (const n of ROOM_NPC_DEFS[def.id] || []) { n.x = sc(n.x); n.y = sc(n.y); }
@@ -224,7 +262,8 @@ function buildRoom(def) {
   const R = { id: 'in_' + def.id, name: def.name, W: w, H: h, interior: true, outside: def.id, door, ground: c, sprites: [], solids: [], circles: [], lights: [], shimmers: [], buildings: [], water: () => false };
   R.solids.push([0, 0, w, WH + 6], [0, 0, 16, h], [w - 16, 0, w, h], [0, h - 18, door - 34, h], [door + 34, h - 18, w, h]);
   const MAKERS = { table: fTable, stool: fStool, counter: fCounter, bed: fBed, stove: fStove, cabinet: () => fCabinet(false), books: () => fCabinet(true), shelf: fShelf,
-    jar: fJar, rack: fRack, stand: () => fArmorStand('metal'), leather: () => fArmorStand('leather'), anvil: fAnvil, forge: fForge, screen: fScreen, plant: fPlant, barrel: fBarrel, chest: () => makeChest(false) };
+    jar: fJar, rack: fRack, stand: () => fArmorStand('metal'), leather: () => fArmorStand('leather'), anvil: fAnvil, forge: fForge, screen: fScreen, plant: fPlant, barrel: fBarrel, chest: () => makeChest(false),
+    altar: fAltar, cushion: fCushion, desk: fDesk };
   for (const [type, x, y, arg] of def.items) {
     const f = MAKERS[type](arg);
     R.sprites.push({ img: f.img, x, y, ax: f.ax, ay: f.ay, fire: !!f.fire, fireOff: f.fire });
@@ -257,8 +296,17 @@ const ROOMS = {
   armor: { name: '錦甲防具行', w: 620, h: 410, door: 310, windows: [[60, 80]], scrolls: [[520, '甲']], lanterns: [[330, 60]],
     rugs: [[230, 300, 160, 70, '#2a4a5a']],
     items: [['stand', 80, 210], ['stand', 160, 210], ['leather', 80, 320], ['leather', 160, 320], ['shelf', 330, 132], ['books', 450, 140], ['counter', 400, 270, 180], ['plant', 580, 380], ['screen', 500, 380]] },
-  river: { name: '王宅', w: 520, h: 370, door: 260, windows: [[300, 70]], nets: [[60, 120]], lanterns: [[430, 70]],
-    items: [['bed', 110, 250], ['table', 290, 270], ['stool', 234, 292], ['stool', 346, 292], ['cabinet', 440, 140], ['barrel', 470, 300], ['jar', 470, 345], ['plant', 40, 340]] },
+  // 王宅底圖原尺寸 1556×1011（修繕前的破舊樣貌）：床在左、桌凳居中、左上屋頂破洞
+  river: { name: '王宅', bg: '王宅', bgAlt: '王宅_修繕', altFlag: 'wang_house_repaired', w: 1000, door: 740,
+    solids: [[0, 0, 1556, 327], [1064, 106, 1360, 368], [152, 289, 312, 372], [160, 398, 541, 638], [669, 511, 969, 729], [99, 638, 319, 778],
+      [1276, 520, 1380, 596], [1279, 600, 1440, 772], [0, 0, 160, 1011], [1375, 0, 1556, 1011], [0, 760, 596, 1011], [886, 760, 1556, 1011]],
+    lights: [[456, 425, 180], [881, 167, 120]] },
+  // 王宅_修繕.png（1555×1011）與破舊版同構圖，家具位置相同，共用上面的碰撞框
+  // 清河祠底圖原尺寸 1672×941：供桌居中靠後牆、左側靠牆的書桌（第 2 章村長對帳）
+  shrine: { name: '清河祠', bg: '祠堂', w: 1100, door: 836,
+    solids: [[0, 0, 1672, 318], [686, 245, 990, 444], [1274, 180, 1478, 346], [0, 0, 180, 941], [176, 346, 253, 542], [180, 228, 245, 346], [139, 588, 216, 748],
+      [1494, 0, 1672, 941], [1417, 362, 1489, 519], [1429, 588, 1551, 748], [0, 718, 764, 941], [908, 718, 1672, 941]],
+    lights: [[369, 98], [1301, 98], [759, 269, 110], [911, 269, 110], [629, 727, 120], [1045, 727, 120], [1466, 596, 100], [526, 209, 90], [1143, 209, 90]] },
 };
 const ROOM_NPC_DEFS = {
   home: [{ id: 'mother', name: '吳嬸', x: 600, y: 455, dir: 0, filter: 'hue-rotate(250deg) saturate(.5) brightness(1.1)', scale: 1.3, wander: 40, speed: 22 }],
@@ -270,6 +318,7 @@ const ROOM_NPC_DEFS = {
   weapon: [{ id: 'smith', name: '韓鐵山', x: 1150, y: 620, dir: 0, filter: 'sepia(.4) brightness(.8) contrast(1.2)', scale: 1.4, r: 110 }],
   armor: [{ id: 'armorer', name: '錦娘', x: 490, y: 218, dir: 0, filter: 'hue-rotate(150deg) saturate(.6) brightness(1.1)', scale: 1.3, r: 110 }],
   river: [],
+  shrine: [],
 };
 function buildInteriors() {
   const out = {};
@@ -289,8 +338,9 @@ function interiorInteractables() {
   }
   if (id === 'weapon') list.push({ x: 300, y: 340, r: 80, name: '火爐', act: () => talk(['爐火燒得正旺，熱氣撲面而來。']) });
   if (id === 'inn') list.push({ x: 1010, y: 395, r: 75, name: '酒罈', act: () => talk(['罈口封著紅紙，聞得到淡淡的酒香。']) });
-  if (id === 'river') list.push({ x: 90, y: 110, r: 70, name: '漁網', act: () => talk(['前屋主留下的舊漁網，修一修或許還能用。']) });
+  if (id === 'river') list.push({ x: 250, y: 225, r: 60, name: '漁網', act: () => talk(['前屋主留下的舊漁網，修一修或許還能用。']) });
   if (id === 'armor') list.push({ x: 120, y: 220, r: 60, name: '鎧甲', act: () => talk(['擦得發亮的鐵甲，映出你的身影。']) });
+  if (id === 'shrine') list.push({ x: 551, y: 305, r: 70, name: '供桌', act: visitShrine });
   return list;
 }
 // 建築門口原本就畫在圖上的人物
