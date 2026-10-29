@@ -122,8 +122,10 @@ function moveActor(a, dx, dy, speed, dt) {
   a.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0);
   const nx = a.x + dx * speed * dt, ny = a.y + dy * speed * dt;
   let moved = false;
-  if (!blocked(nx, a.y, a)) { a.x = nx; moved = true; }
-  if (!blocked(a.x, ny, a)) { a.y = ny; moved = true; }
+  // 劇情走位或讀檔把人放進障礙物裡時，允許自己走出來，不會卡死
+  const stuck = blocked(a.x, a.y, a);
+  if (stuck || !blocked(nx, a.y, a)) { a.x = nx; moved = true; }
+  if (stuck || !blocked(a.x, ny, a)) { a.y = ny; moved = true; }
   a.anim += dt * (speed / 15); a.frame = Math.floor(a.anim) % (a.frames || 8);
   return moved;
 }

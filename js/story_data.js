@@ -62,7 +62,7 @@ const CH03 = {
   good: { x: WANG.x - 175, y: WANG.y + 105 }, rotten: { x: WANG.x - 110, y: WANG.y + 150 }, tiles: { x: WANG.x + 80, y: WANG.y + 130 },
   piles: { x: WANG.x - 205, y: WANG.y + 62 }, drain: { x: WANG.x + 165, y: WANG.y + 95 },
   wu: { x: WANG.x - 70, y: WANG.y + 80 }, road: { x: WANG.x - 330, y: WANG.y + 100 }, plaque: { x: WANG.x + 40, y: WANG.y + 32 },
-  window: { x: 909, y: 236 }, sill: { x: 850, y: 330 }, cup: { x: 578, y: 352 },
+  window: { x: 909, y: 236 }, sill: { x: 850, y: 322 }, cup: { x: 578, y: 352 },
 };
 // 鐵峰武器鋪（韓鐵山）：村裡的門口、室內（in_weapon，底圖縮成 1000×619）的門口
 const SMITH_DOOR = (() => { const b = BUILDINGS.find((x) => x.id === 'weapon'); return { x: b.x + b.door[0], y: b.y + b.door[1] }; })();
