@@ -208,13 +208,13 @@ function migrateStory(saved) {
   if (saved.flags && saved.flags.ch1_wolves) {
     st.chapter = 'ch04';
     for (const id of ['q_ch01_survive', 'q_ch02_rescue', 'q_ch03_repair_wang_house']) { st.quests[id] = 'claimed'; st.claimed.push(id); }
-    st.quests.q_ch04_rescue = 'active';
+    st.quests.q_ch04_encounter = 'active';
     Object.assign(saved.flags, { ch02_rescued: 1, ch02_entered: 1, ch02_chief: 1, wang_house_repaired: 1 });
   }
   return st;
 }
 
-// 舊版第 4 章預告任務（q_ch04_teaser）改成正式的第 4 章任務
+// 舊版劇情存檔升級到目前的章節流程
 function upgradeStory(st) {
   const f = S.flags;
   // 舊版第 2 章（見過村長就結束）：視為已熬過王宅第一夜，第 3 章的人物照常出現
@@ -230,8 +230,16 @@ function upgradeStory(st) {
       f.ch02_bed_tilt = 0;
     } else for (const k of Object.keys(st.obj)) if (k.startsWith('q_ch03_repair_wang_house:')) delete st.obj[k];
   }
-  if (st.quests.q_ch05_teaser) { delete st.quests.q_ch05_teaser; if (!st.quests.q_ch05_heal) st.quests.q_ch05_heal = 'active'; }
-  if (st.quests.q_ch04_teaser) { delete st.quests.q_ch04_teaser; if (!st.quests.q_ch04_rescue) st.quests.q_ch04_rescue = 'active'; }
+  // 舊版第 4、5 章（血跡 → 竹筒／引敵 → 王宅養傷 → 守夜，第 6 章預告）改寫成新版第 4 章：清掉舊進度，從新版第 4 章開頭走
+  const OLD_Q = ['q_ch04_teaser', 'q_ch04_rescue', 'q_ch05_teaser', 'q_ch05_heal', 'q_ch06_teaser'];
+  if (OLD_Q.some((id) => st.quests[id])) {
+    for (const id of OLD_Q) delete st.quests[id];
+    st.claimed = st.claimed.filter((id) => !OLD_Q.includes(id));
+    for (const k of Object.keys(st.obj)) if (OLD_Q.some((id) => k.startsWith(id + ':'))) delete st.obj[k];
+    for (const k of Object.keys(f)) if (/^ch0[456]_/.test(k) || k === 'ruolan_in_room') delete f[k];
+    delete S.inv.black_feather;
+    if (f.ch03_complete) { st.chapter = 'ch04'; st.quests.q_ch04_encounter = 'active'; }
+  }
 }
 
 // ---------- 介面：選單「任務」「日誌」分頁 ----------
@@ -295,76 +303,15 @@ Object.assign(STORY_HOOKS, {
   saveMenu: () => openMenu('system'),
 });
 
-// ---------- 第 4 章：血跡線索（地面點綴）與林間聲響 ----------
-// 血跡素材：assets/props/血跡.png（透明背景）；還沒有檔案時用程式畫的血點代替
-const BLOOD_IMG = Object.assign(new Image(), { src: 'assets/props/血跡.png' });
-// kind：pool 第一處的一小灘；drop 沿路的血滴（每處 1–3 滴）
-const bloodPh = {};
-function bloodSprite(kind, seed) {
-  if (BLOOD_IMG.complete && BLOOD_IMG.naturalWidth) return BLOOD_IMG;
-  const key = kind + seed; if (bloodPh[key]) return bloodPh[key];
-  const [c, g] = canvas(kind === 'pool' ? 64 : 30, kind === 'pool' ? 34 : 18), R = rng(seed * 7 + 3);
-  const drop = (x, y, r) => {
-    g.fillStyle = '#4a0606'; g.beginPath(); g.ellipse(x, y, r + 1, (r + 1) * 0.62, 0, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#8c1010'; g.beginPath(); g.ellipse(x, y, r, r * 0.6, 0, 0, Math.PI * 2); g.fill();
-    g.fillStyle = '#b8261c'; g.beginPath(); g.ellipse(x - r * 0.2, y - r * 0.15, r * 0.6, r * 0.34, 0, 0, Math.PI * 2); g.fill();
-    if (r > 2) { g.fillStyle = '#f08a70'; g.fillRect(Math.round(x - r * 0.45), Math.round(y - r * 0.35), 2, 1); }
-  };
-  if (kind === 'pool') {
-    for (let i = 0; i < 7; i++) drop(24 + (R() - 0.5) * 22, 17 + (R() - 0.5) * 8, 5 + R() * 4);
-    for (let i = 0; i < 9; i++) { const a = R() * Math.PI * 2, d = 16 + R() * 12; drop(32 + Math.cos(a) * d, 17 + Math.sin(a) * d * 0.5, 1 + R() * 1.6); }
-  } else {
-    const n = 1 + Math.floor(R() * 3);
-    for (let i = 0; i < n; i++) drop(15 + (R() - 0.5) * 14, 9 + (R() - 0.5) * 6, 2 + R() * 2.2);
-  }
-  return (bloodPh[key] = c);
-}
-// 血點路線：第一處在林道旁（一小灘），之後每隔一段幾滴，延伸到秦無風被圍的岩石旁
-const BLOOD_TRAIL = (() => {
-  const path = [[FO_BLOOD.x, FO_BLOOD.y], [FO_BLOOD.x + 100, FO_BLOOD.y - 50], [FO_BLOOD.x + 200, FO_BLOOD.y - 110], [FO_BLOOD.x + 300, FO_BLOOD.y - 160], [FO_QIN.x - 40, FO_QIN.y + 70]], pts = [], R = rng(91);
-  for (let i = 1; i < path.length; i++) {
-    const [x0, y0] = path[i - 1], [x1, y1] = path[i], n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 34);
-    for (let k = i === 1 ? 0 : 1; k <= n; k++) pts.push([x0 + (x1 - x0) * k / n + (R() - 0.5) * 16, y0 + (y1 - y0) * k / n + (R() - 0.5) * 10]);
-  }
-  return pts;
-})();
-// 床上的秦無風：把他的走路圖（正面第一格）轉成橫躺，下半身蓋上被子
-let lyingQin = null;
-function lyingQinImg() {
-  if (lyingQin) return lyingQin;
-  const art = CHAR_ART.qinwufeng; if (!art || !art.walk) return null;
-  const fw = art.fw || CHAR_FW, [c, g] = canvas(140, 70);
-  g.save(); g.translate(64, 38); g.rotate(-Math.PI / 2); g.drawImage(art.walk, 0, 0, fw, fw, -fw / 2, -fw / 2 - 6, fw, fw); g.restore();
-  // 被子（顏色同 interior.js 的床）
-  g.fillStyle = '#34507a'; g.fillRect(58, 14, 82, 46); g.fillStyle = '#4a6a9a'; g.fillRect(58, 14, 82, 7);
-  g.fillStyle = '#c9a45c'; for (let x = 66; x < 136; x += 16) g.fillRect(x, 34, 6, 6);
-  return (lyingQin = c);
-}
-// 以 y 排序的物件放進王宅室內：躺在底圖的床上（床墊中心約在床前緣上方 83px，枕頭在左端）；不在床上時換成空圖
-let lyingSprite = null;
-function syncLyingQin() {
-  const R = MAPS.in_river; if (!R) return;
-  if (!lyingSprite) { lyingSprite = { img: canvas(1, 1)[0], x: WROOM.bed.x + 2, y: WROOM.bed.y + 1, ax: 70, ay: 122 }; R.sprites.push(lyingSprite); }
-  const img = F().ch04_back && lyingQinImg();
-  lyingSprite.img = img || canvas(1, 1)[0];
-}
+// ---------- 劇情地面點綴（各章的道具畫在地面層，人物會走在上面）----------
 function drawStoryDecals() {
-  if (G.id === 'in_river') { syncBedTilt(); syncLyingQin(); drawRoofHole(); drawWangProps(); }
+  if (G.id === 'in_river') { syncBedTilt(); drawRoofHole(); drawWangProps(); }
   if (G.id === 'village') syncPlaque();
   drawDoorChipRest();
   drawCh03Decals();
+  drawCh04Decals();
   ch02Tick();
   if (G.id === 'wildwood') drawCh02Clues(performance.now());
-  if (G.id !== 'forest' || !F().ch04_ready || F().ch04_rescued) return;
-  // 調查前只看得到第一處那灘血和旁邊幾滴；調查後整條血路都看得見
-  const list = F().ch04_blood ? BLOOD_TRAIL : BLOOD_TRAIL.slice(0, 3);
-  list.forEach(([x, y], i) => {
-    const img = bloodSprite(i ? 'drop' : 'pool', i), sc = BLOOD_IMG.complete && BLOOD_IMG.naturalWidth ? (i ? 0.6 : 1.4) : 1.4;
-    const w = img.width * sc, h = img.height * sc;
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(img, Math.round(x - w / 2 - cam.x), Math.round(y - h / 2 - cam.y), w, h);
-    ctx.imageSmoothingEnabled = false;
-  });
 }
 // 音效：用 Web Audio 即時合成（風聲＝濾波噪音、金屬碰撞＝幾個不和諧泛音快速衰減），音量隨距離變化
 const Sfx = {
@@ -387,11 +334,11 @@ const Sfx = {
   },
 };
 let ambClash = 2, ambWind = 1;
+// 第 4 章黑松林：進林後有風聲；發現馬蹄印、斷箭之後，林間空地傳來兵刃聲，越靠近越響、越頻繁
 function storyAmbient(dt) {
-  if (G.id !== 'forest' || !F().ch04_ready || F().ch04_fled) return;
-  // 遠處的兵刃聲：調查過血跡之後才聽得見，越靠近越響、越頻繁
-  const d = Math.hypot(player.x - FO_QIN.x, player.y - FO_QIN.y), near = Math.max(0, 1 - d / 900);
-  if (F().ch04_blood && (ambClash -= dt) <= 0) { Sfx.clash(0.15 + near * 0.85); if (Math.random() < 0.4) setTimeout(() => Sfx.clash(0.1 + near * 0.7), 160); ambClash = 3.5 - near * 2.2 + Math.random() * 1.5; }
+  if (G.id !== 'forest' || !F().ch04_errand || F().ch04_encounter) return;
+  const d = Math.hypot(player.x - CH04.clearing.x, player.y - CH04.clearing.y), near = Math.max(0, 1 - d / 900);
+  if (F().ch04_traces && (ambClash -= dt) <= 0) { Sfx.clash(0.15 + near * 0.85); if (Math.random() < 0.4) setTimeout(() => Sfx.clash(0.1 + near * 0.7), 160); ambClash = 3.5 - near * 2.2 + Math.random() * 1.5; }
   if ((ambWind -= dt) <= 0) { Sfx.wind(0.7); ambWind = 6 + Math.random() * 5; }
 }
 Object.assign(STORY_HOOKS, {

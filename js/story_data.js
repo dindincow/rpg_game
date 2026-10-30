@@ -7,9 +7,9 @@ const CHAPTERS = {
   ch01: { no: 1, title: '最後一行程式碼' },
   ch02: { no: 2, title: '飢餓的清河村' },
   ch03: { no: 3, title: '王宅裡的異鄉人' },
-  ch04: { no: 4, title: '黑松林中的冷面劍客' },
-  ch05: { no: 5, title: '沈姑娘，我又撿了個人' },
-  ch06: { no: 6, title: '黑羽夜行' },
+  ch04: { no: 4, title: '黑松林・命運的相遇' },
+  ch05: { no: 5, title: '（章名待定・製作中）' },
+  ch06: { no: 6, title: '（製作中）' },
 };
 
 // 角色與初始羈絆（0–100 僅為初始方案）
@@ -22,9 +22,25 @@ const STORY_CHARS = {
   qin_wufeng: { name: '秦無風', desc: '冷面劍客，身中劇毒，對人充滿戒心', rel: { trust: 0, affection: 5, ideology: 10 } },
 };
 
-// 第 4 章：林道上的血跡、秦無風被圍的岩石旁
-const FO_BLOOD = { x: 1560, y: 740 };
-const FO_QIN = { x: FO_WU.x, y: FO_WU.y };
+// 第 4 章《黑松林・命運的相遇》的定點（劇情在 js/ch04.js）
+// 祠堂石階下的清點處、藥鋪（若蘭的醫舍）門前、西村口；村外森林（黑松林）的青脈草、馬蹄印、斷箭、林間空地
+const CH04 = {
+  chief: { x: 1592, y: 935 }, bamboo: { x: 1515, y: 1065 }, wood: { x: 1592, y: 1075 }, rope: { x: 1675, y: 1065 }, lane: { x: 1400, y: 1010 },
+  clinic: { x: 1040, y: 1850 }, gate: { x: 300, y: 1490 },
+  herbs: [{ x: 1880, y: 585 }, { x: 1720, y: 655 }, { x: 1600, y: 640 }], hoof: { x: 1530, y: 735 }, arrow: { x: 1470, y: 800 },
+  hide: { x: 1560, y: 720 }, wu: { x: 1790, y: 610 }, entry: { x: 2300, y: 440 },
+  clearing: { x: FO_WU.x, y: FO_WU.y }, rush: { x: 1870, y: 590 },
+};
+// 舊獵道通往林間空地的側道（森林生成時不在這條線上種樹）
+const FO_HUNT_TRAIL = (() => {
+  const s = { x: 1560, y: 740 }, e = CH04.clearing, R = rng(91), pts = [];
+  const path = [[s.x, s.y], [s.x + 100, s.y - 50], [s.x + 200, s.y - 110], [s.x + 300, s.y - 160], [e.x - 40, e.y + 70]];
+  for (let i = 1; i < path.length; i++) {
+    const [x0, y0] = path[i - 1], [x1, y1] = path[i], n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 34);
+    for (let k = i === 1 ? 0 : 1; k <= n; k++) pts.push([x0 + (x1 - x0) * k / n + (R() - 0.5) * 16, y0 + (y1 - y0) * k / n + (R() - 0.5) * 10]);
+  }
+  return pts;
+})();
 
 // 王宅：清河北岸，使用者的建築圖（河畔人家.png）
 const WANG = { x: 3060, y: 1000 + VN }; // 王宅大門：清河村東邊林子深處（world.js 的 BUILDINGS river）
@@ -67,7 +83,7 @@ const CH03 = {
 // 鐵峰武器鋪（韓鐵山）：村裡的門口、室內（in_weapon，底圖縮成 1000×619）的門口
 const SMITH_DOOR = (() => { const b = BUILDINGS.find((x) => x.id === 'weapon'); return { x: b.x + b.door[0], y: b.y + b.door[1] }; })();
 const SMITH_ROOM = { door: { x: 509, y: 572 } };
-// 第 5 章：村外森林的止血草（解毒藥材）
+// 村外森林的止血草（學會採藥才採得到）
 const FO_HERBS = [[330, 1470], [820, 1390], [980, 940], [560, 1260], [1390, 990]];
 
 // 目標在別張地圖時，箭頭先指向出口
@@ -146,37 +162,34 @@ const QUESTS = {
       { text: '天黑了，回屋裡休息（床邊按 E）', flag: 'ch03_complete', at: ['in_river', WROOM.bed.x + 20, WROOM.bed.y + 20] },
     ],
     rewards: [{ type: 'heart', n: 5 }, { type: 'item', id: 'herb', n: 2 }, { type: 'gold', n: 20 }],
-    next: ['q_ch04_rescue'],
+    next: ['q_ch04_encounter'],
   },
-  q_ch04_rescue: {
-    id: 'q_ch04_rescue', chapterId: 'ch04', title: '黑松林中的冷面劍客',
-    desc: '老吳說黑松林最近有帶刀的陌生人出沒。歇一晚，再去林子外緣找水源和木材——眼睛放亮些。',
+  // 第 4 章：祠堂清點 → 醫舍學藥草辨識 → 黑松林採青脈草 → 初遇之戰（戰棋）→ 山洞 → 回村見村長 → 醫舍診治 → 王宅暫住
+  q_ch04_encounter: {
+    id: 'q_ch04_encounter', chapterId: 'ch04', title: '黑松林・命運的相遇',
+    desc: '暫住之約第 2 日。村長要你辰時到祠堂外清點修渠剩料；老吳說黑松林裡那些帶兵器的人，還沒走。',
     objectives: [
-      { text: '在王宅休息一晚（大門前按 E）', flag: 'ch04_ready', at: ['village', WANG.x, WANG.y + 20] },
-      { text: '到村外森林調查水源和木材，留意林道上的動靜', flag: 'ch04_blood', at: ['forest', FO_BLOOD.x, FO_BLOOD.y] },
-      { text: '循著血跡往林子深處追查', flag: 'ch04_rescued', at: ['forest', FO_QIN.x, FO_QIN.y] },
-      { text: '把昏倒的劍客帶回清河村', flag: 'ch04_back' },
+      { text: '清晨醒來，出門前看看屋裡', flag: 'ch04_morning', at: ['in_river', WROOM.mid.x, WROOM.mid.y] },
+      { text: '辰時到祠堂石階下找村長', flag: 'ch04_count_start', at: ['village', CH04.chief.x, CH04.chief.y] },
+      { text: '清點修渠剩料：裂竹、舊木、粗繩', flag: 'ch04_sorted', at: ['village', CH04.wood.x, CH04.wood.y] },
+      { text: '向村長交差', flag: 'ch04_inventory', at: ['village', CH04.chief.x, CH04.chief.y] },
+      { text: '跟老吳把老周送到醫舍（藥鋪）', flag: 'ch04_errand', at: ['village', CH04.clinic.x, CH04.clinic.y] },
+      { text: '對照若蘭的筆記，在舊獵道旁採青脈草', item: 'qingmai', amount: 3, at: ['forest', CH04.herbs[0].x, CH04.herbs[0].y] },
+      { text: '查看前方泥地上的痕跡', flag: 'ch04_traces', at: ['forest', CH04.hoof.x, CH04.hoof.y] },
+      { text: '擊退圍攻秦無風的蒙面人', flag: 'ch04_battle_won', at: ['forest', CH04.clearing.x, CH04.clearing.y] },
+      { text: '在避風石洞撐過一夜', flag: 'ch04_handshake' },
+      { text: '回清河村，向村長說明', flag: 'ch04_chief' },
+      { text: '到醫舍讓若蘭看傷', flag: 'ch04_qin_stable' },
+      { text: '讓秦無風在王宅暫歇一夜', flag: 'ch04_guest' },
     ],
-    rewards: [{ type: 'item', id: 'herb', n: 2 }, { type: 'gold', n: 30 }],
-    next: ['q_ch05_heal'],
+    rewards: [{ type: 'item', id: 'herb', n: 2 }, { type: 'gold', n: 30 }, { type: 'rel', char: 'shen_ruolan', stat: 'trust', n: 3 }],
+    next: ['q_ch05_next'],
   },
-  q_ch05_heal: {
-    id: 'q_ch05_heal', chapterId: 'ch05', title: '沈姑娘，我又撿了個人',
-    desc: '秦無風毒發昏迷，躺在王宅的床上。得找沈若蘭來看，也得給村長一個交代。',
-    objectives: [
-      { text: '到王宅門口請沈若蘭來看傷', flag: 'ch05_ruolan', at: ['village', WANG.x + 20, WANG.y + 110] },
-      { text: '到村外森林採止血草（解毒用）', item: 'herb', amount: 3, at: ['forest', FO_HERBS[0][0], FO_HERBS[0][1]] },
-      { text: '把止血草交給王宅裡的沈若蘭', flag: 'ch05_treated', at: ['in_river', WROOM.bed.x + 110, WROOM.bed.y + 40] },
-      { text: '夜裡守著王宅（床邊按 E）', flag: 'ch05_watch', at: ['in_river', WROOM.bed.x + 40, WROOM.bed.y + 30] },
-    ],
-    rewards: [{ type: 'rel', char: 'qin_wufeng', stat: 'trust', n: 5 }, { type: 'item', id: 'herb', n: 2 }],
-    next: ['q_ch06_teaser'],
-  },
-  // 第 6 章尚未製作：passive 不佔用畫面上方的目標提示，讓原有的村莊與雲山內容照常引導
-  q_ch06_teaser: {
-    id: 'q_ch06_teaser', chapterId: 'ch06', title: '黑羽夜行（第 6 章製作中）', passive: true,
-    desc: '村外發現搜查痕跡，追兵似乎已接近清河村。第 6 章尚在製作中。',
-    objectives: [{ text: '（第 6 章製作中）可自由探索清河村與村外森林', flag: 'ch06_started' }],
+  // 第 5 章尚未製作：passive 不佔用畫面上方的目標提示，讓原有的村莊與雲山內容照常引導
+  q_ch05_next: {
+    id: 'q_ch05_next', chapterId: 'ch05', title: '第 5 章（製作中）', passive: true,
+    desc: '秦無風在王宅暫歇一夜，村長明日再議去留；三日之約也即將到期。第 5 章尚在製作中。',
+    objectives: [{ text: '（第 5 章製作中）可自由探索清河村與村外森林', flag: 'ch05_started' }],
     rewards: [], next: [],
   },
 };
@@ -890,7 +903,7 @@ const DIALOGUES = {
   // ===== 第 3 章：劇情對話在 js/ch03.js；這裡只留之後章節仍會用到的王宅與閒聊對話 =====
   dlg_wang_rest: { lines: [
     { choice: { q: '王宅', options: [
-      { id: 'rest', label: '休息到天亮', effects: [{ type: 'hook', name: 'rest' }, { type: 'set_flag', key: 'ch04_ready' }], lines: [
+      { id: 'rest', label: '休息到天亮', effects: [{ type: 'hook', name: 'rest' }], lines: [
         { branch: [
           [{ notFlags: ['wang_night1'] }, [
             '（半夜，屋頂上傳來「咚、咚、咚」的聲音。）',
@@ -910,165 +923,7 @@ const DIALOGUES = {
   dlg_wu_idle: { lines: [['老吳', '屋子住得還慣吧？有空來吳家喝碗湯，我那口子手藝不錯。']] },
   dlg_ruolan_idle: { lines: [['沈若蘭', '村裡缺藥，也缺糧。我能做的，就是讓病人多撐一天是一天。']] },
   dlg_gu_idle: { lines: [['顧文淵', '巧婦難為無米之炊。你有良策，也得先有米。', 'sigh']] },
-  // ===== 第 4 章 =====
-  // 發現血跡分四段：鏡頭停頓看見血點 → 玩家自己按 E 調查 → 沿路血點引導 → 聽見交手、鏡頭移向前方
-  // 第一段：走近時鏡頭在血點上停一下，不用旁白交代，讓玩家自己去看
-  dlg_ch04_notice: { lines: [
-    { effects: [{ type: 'hook', name: 'camTo', x: FO_BLOOD.x, y: FO_BLOOD.y - 30, pan: 0.6, hold: 1.6 }] },
-    [HERO_NAME, '嗯？草葉上那是……'],
-  ] },
-  // 第二段：按 E 調查（【補】第二句以後）
-  dlg_ch04_blood: { lines: [
-    [HERO_NAME, '這血還沒乾……看來受傷的人剛離開不久。'],
-    [HERO_NAME, '老吳說的帶刀陌生人……正常人這時候該掉頭回去。'],
-    [HERO_NAME, '……先看一眼，就一眼。'],
-  ], effects: [{ type: 'set_flag', key: 'ch04_blood' }] },
-  dlg_ch04_rescue: { lines: [
-    // 第四段：先聽見劍刃交擊，鏡頭移向前方的交戰
-    { effects: [{ type: 'hook', name: 'sfx', sound: 'clash' }, { type: 'hook', name: 'camTo', x: FO_QIN.x, y: FO_QIN.y - 20, pan: 1.2, hold: 999 }] },
-    [HERO_NAME + '（壓低身子）', '……！'],
-    { cg: 'cg/第4章_秦無風遇襲.png' },
-    '【黑松林，劍光與血霧交錯。黑衣劍客踉蹌退到岩石旁。】',
-    ['蒙面人', '秦無風，交出東西，留你全屍！'],
-    ['秦無風', '你們也配？', 'hurt'],
-    { effects: [{ type: 'meet', char: 'qin_wufeng' }] },
-    '（劍客身手極快，卻臉色發青、腳步虛浮——他中毒了，撐不了多久。）',
-    { cg: null },
-    { choice: { key: 'ch04_rescue_method', q: '正面打，你絕對打不過這些人。怎麼辦？', options: [
-      { id: 'bamboo', label: '在坡上敲碎竹筒，假裝喊人來', effects: [{ type: 'rel', char: 'qin_wufeng', stat: 'ideology', n: 5 }, { type: 'set_flag', key: 'ch04_way_bamboo' }], next: 'dlg_ch04_bamboo' },
-      { id: 'lure', label: '朝落單的蒙面人丟石頭，把他引下坡纏住（戰鬥）', effects: [{ type: 'rel', char: 'qin_wufeng', stat: 'trust', n: 5 }, { type: 'set_flag', key: 'ch04_way_lure' }], next: 'dlg_ch04_lure' },
-    ] } },
-  ] },
-  dlg_ch04_bamboo: { lines: [
-    { walk: [{ who: 'player', x: FO_QIN.x - 190, y: FO_QIN.y + 40, run: true }] },
-    '（你在坡上敲碎竹筒，啪啪聲在林間迴盪，向遠處大喊。）',
-    [HERO_NAME, '這邊！人找到了！快叫其他弟兄過來！'],
-    ['蒙面人', '有埋伏？'],
-  ], next: 'dlg_ch04_escape' },
-  // 【補】引開一名蒙面人的分支：一對一拖住他，不是打贏整批追兵
-  dlg_ch04_lure: { lines: [
-    '（你朝最外側的蒙面人丟出石頭，轉身就往坡下跑。那人罵了一聲，提刀追來。）',
-    { walk: [{ who: 'player', x: FO_QIN.x - 200, y: FO_QIN.y + 230, run: true }, { who: 'masked_f1', x: FO_QIN.x - 170, y: FO_QIN.y + 190, run: true }] },
-    ['蒙面人', '哪來的野小子！'],
-    [HERO_NAME, '只要拖住一個……他那邊就少一把刀！'],
-    '【戰鬥】這名追兵比之前的惡徒強得多。撐不住就用「道具」吃藥，別硬拚。',
-    { effects: [{ type: 'hook', name: 'battle', group: ['masked'], win: 'dlg_ch04_lure_win' }] },
-  ] },
-  dlg_ch04_lure_win: { lines: [
-    '（蒙面人被你纏得火起，坡上的同夥卻因為少了一人，陣腳一亂。）',
-  ], next: 'dlg_ch04_escape' },
-  dlg_ch04_escape: { lines: [
-    { effects: [{ type: 'hook', name: 'camFree' }] },
-    ['秦無風（目光一凜，趁隙出劍）', '走！', 'glare'],
-    { walk: [{ who: 'player', x: FO_QIN.x + 10, y: FO_QIN.y + 30, run: true }] },
-    { walk: [{ who: 'player', x: FO_QIN.x + 330, y: FO_QIN.y + 120, run: true }, { who: 'qin_f', x: FO_QIN.x + 300, y: FO_QIN.y + 100, run: true }] },
-    { effects: [{ type: 'set_flag', key: 'ch04_fled' }] },
-    '（劍光一閃，你只覺得手腕被人一拽，兩人滾下山坡，跌進一道長滿蕨草的山溝。）',
-    '（坡上的腳步聲來回搜了幾趟，漸漸遠去。）',
-    '（下一刻，冰冷的劍尖抵上了你的喉嚨。）',
-    ['秦無風', '你是何人？', 'pain'],
-    [HERO_NAME, '救你的人！能不能先把劍放下？'],
-    ['秦無風', '你為何救我？', 'doubt'],
-    { choice: { key: 'ch04_why_save', q: '怎麼回答？', options: [
-      { id: 'dying', label: '「因為你快死了啊！但現在我也快被你嚇死。」', effects: [{ type: 'rel', char: 'qin_wufeng', stat: 'affection', n: 3 }] },
-      // 【補】
-      { id: 'honest', label: '「我也說不上來。看見有人被圍，腳就自己動了。」', effects: [{ type: 'rel', char: 'qin_wufeng', stat: 'trust', n: 3 }],
-        lines: [['秦無風', '……蠢。', 'annoyed'], [HERO_NAME, '蠢人剛救了你一命，大哥。']] },
-    ] } },
-    '（秦無風剛要開口，手指突然失力，劍落入草中。）',
-    [HERO_NAME, '喂？秦兄？別在這時候暈啊！'],
-    '（他倒在草裡，傷口發黑，呼吸又淺又急。你在他腰間摸到一塊冰冷的令牌——上頭刻著一根黑色羽毛。剛才那些蒙面人身上，也掛著一樣的東西。）',
-    { effects: [{ type: 'item', id: 'black_feather', n: 1, why: '從秦無風身上發現' }, { type: 'set_flag', key: 'ch04_rescued' }] },
-    [HERO_NAME, '黑色羽毛……先別管了。得把人帶回村，沈姑娘或許有辦法。'],
-    { effects: [{ type: 'set_flag', key: 'ch04_back' }, { type: 'hook', name: 'warp', map: 'in_river', x: WROOM.bed.x + 120, y: WROOM.bed.y + 40, dir: 2, hour: 19 }] },
-    '（你咬著牙，半扛半拖地把人背出林子。等摸回王宅，天已經黑了。）',
-    '（你把他放到床上。他的臉色白得嚇人，嘴唇發紫，額頭卻燙得厲害。）',
-    [HERO_NAME, '……我一個人顧不來。得去找沈姑娘。'],
-    '【第 4 章完】',
-  ], effects: [{ type: 'chapter', id: 'ch05' }] },
-
-  // ===== 第 5 章 =====
-  // 王宅門口請沈若蘭 → 一起進屋
-  dlg_ch05_call: { lines: [
-    [HERO_NAME, '沈姑娘！能不能來王宅一趟？我……又撿到一個人。'],
-    ['沈若蘭', '……又？'],
-    { effects: [{ type: 'set_flag', key: 'ruolan_in_room' }, { type: 'hook', name: 'warp', map: 'in_river', x: WROOM.bed.x + 150, y: WROOM.bed.y + 50, dir: 2 }] },
-    '【王宅內，沈若蘭掀開秦無風的袖口查看傷勢。】',
-    ['沈若蘭', '傷口發黑，還有毒。你們究竟惹上了誰？'],
-    [HERO_NAME, '不是我惹的，是我在森林裡撿到的。'],
-    ['沈若蘭', '你是不是每次出去，都要撿個受傷的人回來？'],
-    ['秦無風（微睜眼）', '我可自行離開。', 'pain'],
-    ['沈若蘭', '你現在連坐起來都勉強，還想走去哪？'],
-    ['秦無風', '我留下，只會連累你們。', 'pain'],
-    { effects: [{ type: 'set_flag', key: 'ch05_ruolan' }] },
-    // 【補】需要藥材：任務的採集段
-    ['沈若蘭', '這毒要先拔出來。我藥簍裡的止血草不夠，還得再採三株。'],
-    { effects: [{ type: 'hook', name: 'learnHerbal' }] },
-    ['沈若蘭', '葉緣有細鋸齒、折開會滲紅汁的就是。村外林子的溪邊、路旁都有，快去快回。'],
-  ] },
-  // 交藥 → 解毒、村長來了、顧文淵、師父的信、沈懷仁
-  dlg_ch05_treat: { lines: [
-    { effects: [{ type: 'item', id: 'herb', n: -3, why: '交給沈若蘭解毒' }] },
-    '（沈若蘭把藥草搗碎，混著烈酒敷上傷口。秦無風悶哼一聲，額頭冒出冷汗，卻一聲沒喊。）',
-    ['沈若蘭', '毒拔了一半。要好透，少說也得躺上好幾天。'],
-    { effects: [{ type: 'set_flag', key: 'ch05_elders' }] },
-    '（門外傳來腳步聲。村長陳伯安和顧文淵前後進了屋。）',
-    ['陳伯安', '老吳說你背了個渾身是血的人回來……就是他？'],
-    ['秦無風', '我留下，只會連累你們。', 'cold'],
-    ['陳伯安', '此話倒不錯。我們一村老小，經不起禍事。'],
-    { choice: { key: 'ch05_proposal', q: '怎麼說服村長？', options: [
-      { id: 'guard', label: '「村長，我不會要大家替我冒險。先讓他躲在王宅，夜裡我守著。」',
-        effects: [{ type: 'rel', char: 'chen_boan', stat: 'trust', n: 5 }, { type: 'rel', char: 'qin_wufeng', stat: 'trust', n: 3 }] },
-      // 【補】
-      { id: 'secret', label: '「知道的人越少越好。就我們幾個，誰都別往外說。」',
-        effects: [{ type: 'rel', char: 'gu_wenyuan', stat: 'ideology', n: 3 }, { type: 'rel', char: 'chen_boan', stat: 'ideology', n: 3 }],
-        lines: [['陳伯安', '……也罷。人在王宅，出了事，你擔著。']] },
-    ] } },
-    ['顧文淵', '若真有追兵，我們還得先知道他們尋的是人，還是物。', 'serious'],
-    ['秦無風（沉默許久）', '……我師父留了一封信。', 'cold'],
-    ['沈若蘭', '信上若提到沈懷仁，請你告訴我。'],
-    ['秦無風（抬眼）', '你認識他？', 'surprise'],
-    ['沈若蘭', '他是我爹。三年前，他就沒回來。'],
-    // 【補】顧文淵把黑羽令、舊軍糧紀錄與北境案初步連起來
-    '（你拿出那塊刻著黑色羽毛的令牌。顧文淵接過去，翻來覆去看了很久。）',
-    ['顧文淵', '黑羽令……我那幾頁舊軍糧記錄裡，也提過北境的一筆糧餉去向不明。', 'think'],
-    ['顧文淵', '三年前的北境案、沈大夫失蹤、追殺秦兄的黑羽令——未必是三件事。', 'serious'],
-    ['陳伯安', '……今晚就到這裡。人在王宅，夜裡你自己警醒些。'],
-    { effects: [{ type: 'set_flag', key: 'ch05_elders', value: 0 }] },
-  ], effects: [{ type: 'set_flag', key: 'ch05_treated' }, { type: 'meet', char: 'gu_wenyuan' },
-    { type: 'log', text: '顧文淵把黑羽令、舊軍糧記錄與三年前的北境案連在一起（尚無實證）' }] },
-  dlg_ch05_need: { lines: [['沈若蘭', '止血草還差一些。村外林子的溪邊、路旁都有，採夠三株再來。']] },
-  dlg_ch05_ruolan_after: { lines: [['沈若蘭', '他的毒還沒清乾淨，夜裡若發起高燒，就用濕布替他擦身。我明早再來。']] },
-  // 床上的秦無風
-  dlg_ch05_qin_sleep: { lines: ['（秦無風昏睡著，呼吸又淺又急。傷口的黑色正一點一點往外擴。）'] },
-  dlg_ch05_qin_awake: { lines: [['秦無風（閉著眼）', '……別看了。死不了。', 'pain']] },
-  // 守夜 → 天亮後發現搜查痕跡（章末懸念）
-  dlg_ch05_watch: { lines: [
-    { choice: { q: '要守在床邊，一直到天亮嗎？', options: [
-      { id: 'yes', label: '守夜到天亮', next: 'dlg_ch05_night' },
-      { id: 'no', label: '再等等' },
-    ] } },
-  ] },
-  dlg_ch05_night: { lines: [
-    { effects: [{ type: 'hook', name: 'night' }] },
-    '（夜很深。你把椅子拖到床邊，聽著窗外的蟲鳴和他斷斷續續的呼吸。）',
-    // 【補】守夜時的一段短對話（羈絆：第 5 章「傷者的戒心」）
-    ['秦無風（半夢半醒）', '……你為何不睡。', 'shy'],
-    [HERO_NAME, '說好了夜裡我守著。你睡你的。'],
-    { choice: { key: 'ch05_night_talk', speaker: '秦無風', q: '……你不怕我醒來，一劍殺了你？', options: [
-      { id: 'joke', label: '「你劍都拿不穩了，大哥。」', effects: [{ type: 'rel', char: 'qin_wufeng', stat: 'affection', n: 3 }] },
-      { id: 'trust', label: '「怕。可我更怕你死在這裡。」', effects: [{ type: 'rel', char: 'qin_wufeng', stat: 'trust', n: 3 }] },
-    ] } },
-    '（他沒再說話。過了很久，呼吸總算平穩下來。）',
-    { effects: [{ type: 'hook', name: 'dawn' }] },
-    '【天亮】',
-    ['老吳', '小子！醒著沒有？'],
-    ['老吳', '我一早上山砍柴，村外林子邊上的草全被人踩倒了，好幾處腳印，還有刀鞘拖過的痕跡。'],
-    ['老吳', '不是砍柴的，也不是獵戶……是在找人。'],
-    [HERO_NAME, '……追兵已經到村子外面了。'],
-    '【第 5 章完】村外發現搜查痕跡，追兵似乎已接近清河村。第 6 章「黑羽夜行」製作中。',
-  ], effects: [{ type: 'set_flag', key: 'ch05_watch' }, { type: 'set_flag', key: 'ruolan_in_room', value: 0 }, { type: 'chapter', id: 'ch06' }] },
-
+  // ===== 第 4 章：劇情對話在 js/ch04.js =====
   dlg_ch02_woman: { lines: [['分粥的婦人', '一人一勺，不能多。……對不住，倉裡就剩這些了。']] },
   dlg_ch02_queue: { lines: ['（捧著陶碗的人默默排著隊，沒有人說話。）'] },
   // 小蓮與奶奶
@@ -1097,16 +952,10 @@ const STORY_EVENTS = [
   { id: 'ch02_night', map: 'in_river', area: [WROOM.mid.x, WROOM.mid.y, 700], if: { allFlags: ['ch02_house_checked'] }, dialogue: 'dlg_ch02_night' },
   { id: 'ch01_tracks', map: 'forest', area: [FO_TRACKS.x, FO_TRACKS.y, 80], if: { notFlags: ['ch01_voice'] }, dialogue: 'dlg_ch01_tracks' },
   { id: 'ch01_voice_early', map: 'forest', area: [FO_SHADOW.x, FO_SHADOW.y, 90], if: { notFlags: ['ch01_shadow'] }, dialogue: 'dlg_ch01_voice_early' },
-  { id: 'ch04_notice', map: 'forest', area: [FO_BLOOD.x, FO_BLOOD.y, 170], if: { allFlags: ['ch04_ready'] }, dialogue: 'dlg_ch04_notice' },
-  { id: 'ch04_rescue', map: 'forest', area: [FO_QIN.x, FO_QIN.y, 240], if: { allFlags: ['ch04_blood'], notFlags: ['ch04_rescued'] }, dialogue: 'dlg_ch04_rescue' },
 ];
 
 // 地圖上的劇情調查點：talk 依序找第一個條件成立的 [條件, 對話, 是否閃光提示]
 const STORY_SPOTS = [
-  { id: 'fo_blood', map: 'forest', x: FO_BLOOD.x, y: FO_BLOOD.y, r: 60, name: '血跡', if: { allFlags: ['ch04_ready'], notFlags: ['ch04_blood'] },
-    talk: [[null, 'dlg_ch04_blood', true]] },
-  { id: 'wroom_bed', map: 'in_river', x: WROOM.bed.x + 20, y: WROOM.bed.y + 20, r: 80, name: '秦無風', if: { allFlags: ['ch04_back'] },
-    talk: [[{ allFlags: ['ch05_treated'], notFlags: ['ch05_watch'] }, 'dlg_ch05_watch', true], [{ allFlags: ['ch05_ruolan'] }, 'dlg_ch05_qin_awake'], [null, 'dlg_ch05_qin_sleep']] },
   // 第 1 章摸黑探索的小發現（進村之後就不再顯示）
   { id: 'fo_stump', map: 'forest', x: FO_CLUES.stump.x, y: FO_CLUES.stump.y, r: 55, name: '樹樁', if: { notFlags: ['ch02_entered'] }, talk: [[null, 'dlg_fo_stump']] },
   { id: 'fo_bones', map: 'forest', x: FO_CLUES.bones.x, y: FO_CLUES.bones.y, r: 55, name: '白骨', if: { notFlags: ['ch02_entered'] }, talk: [[null, 'dlg_fo_bones']] },
@@ -1150,13 +999,6 @@ const STORY_NPCS = [
   // 第 1 章狼爪印：藏在爪印延伸過去的樹叢裡，探頭後依選擇撲過來或逃走
   { id: 'wolf_f', map: 'forest', name: '野狼', art: 'wolf', x: FO_TRACKS.x + 200, y: FO_TRACKS.y - 70, dir: 2, scale: 1.35, r: 1,
     show: { allFlags: ['ch01_wolf_out'], notFlags: ['ch01_wolf_gone'] }, talk: [] },
-  // 第 4 章：秦無風與兩名蒙面人
-  { id: 'qin_f', map: 'forest', name: '秦無風', art: 'qinwufeng', x: FO_QIN.x, y: FO_QIN.y - 10, dir: 0, scale: 1.35,
-    show: { allFlags: ['ch04_blood'], notFlags: ['ch04_rescued'] }, talk: [[null, 'dlg_ch04_rescue']] },
-  { id: 'masked_f1', map: 'forest', name: '蒙面人', art: 'masked', x: FO_QIN.x - 90, y: FO_QIN.y + 45, dir: 3, scale: 1.35,
-    show: { allFlags: ['ch04_blood'], notFlags: ['ch04_fled'] }, talk: [[null, 'dlg_ch04_rescue']] },
-  { id: 'masked_f2', map: 'forest', name: '蒙面人', art: 'masked', x: FO_QIN.x + 85, y: FO_QIN.y + 50, dir: 2, scale: 1.35,
-    show: { allFlags: ['ch04_blood'], notFlags: ['ch04_fled'] }, talk: [[null, 'dlg_ch04_rescue']] },
   // 村中：公倉前領粥的隊伍、屋簷下的小蓮祖孫
   { id: 'xiaolian', map: 'village', name: '小蓮', art: 'kid', filter: 'hue-rotate(280deg) saturate(1.2) brightness(1.1)', x: CH02.granary.x - 50, y: CH02.granary.y + 75, dir: 1, scale: 1.05,
     show: { allFlags: ['ch02_entered'], notFlags: ['ch03_xl_visit'] }, talk: [[null, 'dlg_xiaolian']] },
@@ -1186,16 +1028,11 @@ const STORY_NPCS = [
     show: { allFlags: ['ch02_permit'], notFlags: ['ch02_wu_left'] }, talk: [] },
   // 王宅周圍
   { id: 'ruolan_v', map: 'village', name: '沈若蘭', art: 'shenruolan', x: WANG.x + 20, y: WANG.y + 110, dir: 1, scale: 1.35,
-    show: { allFlags: ['ch03_treated'], notFlags: ['ruolan_in_room'] },
-    talk: [[{ allFlags: ['ch04_back'], notFlags: ['ch05_ruolan'] }, 'dlg_ch05_call'], [{ notFlags: ['ch03_complete'] }, 'dlg_ch03_ruolan_idle'], [null, 'dlg_ruolan_idle']] },
-  // 第 5 章：王宅室內
-  { id: 'ruolan_in', map: 'in_river', name: '沈若蘭', art: 'shenruolan', x: WROOM.bed.x + 110, y: WROOM.bed.y + 40, dir: 2, scale: 1.35,
-    show: { allFlags: ['ruolan_in_room'] },
-    talk: [[{ notFlags: ['ch05_treated'], items: { herb: 3 } }, 'dlg_ch05_treat'], [{ notFlags: ['ch05_treated'] }, 'dlg_ch05_need'], [null, 'dlg_ch05_ruolan_after']] },
-  { id: 'chief_in', map: 'in_river', name: '陳伯安', art: 'chief', x: WROOM.bed.x + 230, y: WROOM.bed.y + 60, dir: 2, scale: 1.3,
-    show: { allFlags: ['ch05_elders'] }, talk: [[null, 'dlg_ch05_ruolan_after']] },
-  { id: 'gu_in', map: 'in_river', name: '顧文淵', art: 'guwenyuan', x: WROOM.bed.x + 440, y: WROOM.bed.y + 20, dir: 2, scale: 1.35,
-    show: { allFlags: ['ch05_elders'] }, talk: [[null, 'dlg_gu_idle']] },
+    show: { allFlags: ['ch03_treated'], notFlags: ['ch04_morning'] },
+    talk: [[{ notFlags: ['ch03_complete'] }, 'dlg_ch03_ruolan_idle'], [null, 'dlg_ruolan_idle']] },
+  // 第 4 章期間老吳跟著跑（js/ch04.js），章末回王宅門前
   { id: 'wu_v', map: 'village', name: '老吳', art: 'woodcutter', x: WANG.x - 110, y: WANG.y + 85, dir: 3, scale: 1.3,
-    show: { allFlags: ['ch03_complete'] }, talk: [[null, 'dlg_wu_idle']] },
+    show: { allFlags: ['ch03_complete'], notFlags: ['ch04_morning'] }, talk: [[null, 'dlg_wu_idle']] },
+  { id: 'wu_v2', map: 'village', name: '老吳', art: 'woodcutter', x: WANG.x - 110, y: WANG.y + 85, dir: 3, scale: 1.3,
+    show: { allFlags: ['ch04_complete'] }, talk: [[null, 'dlg_wu_idle']] },
 ];

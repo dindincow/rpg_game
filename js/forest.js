@@ -98,7 +98,7 @@ function buildForest() {
   // 坑口腳下的落石與土堆
   for (const [name, dx, dy] of [['巨石1', -122, 6], ['碎石2', -84, 30], ['土石堆3', 128, 10], ['巨石3', 165, -10], ['土丘2', -170, 18], ['碎石1', 96, 34]]) rock(name, mx + dx, my + dy, !name.startsWith('土丘'));
   // 路旁可砍的樹
-  // 止血草（第 5 章解毒用；學會採藥才採得到）
+  // 止血草（學會採藥才採得到）
   FO_HERBS.forEach(([x, y], i) => { const h = makeHerb('herb', 5 + (i % 3)); addGather(G, addSprite, 'herb', x, y, 'fherb' + i, { imgs: [h.img, makeHerb('herb', 0).img], ax: h.ax, ay: h.ay }); });
   FO_CHOP.forEach(([x, y], i) => { addGather(G, addSprite, 'wood', x, y, 'fwood' + i, makeChopTree(R)); G.circles.push([x, y - 4, 11]); });
   stampDecor(gctx, matAt, G, R, FOW, FOH, 250);
@@ -112,9 +112,9 @@ function buildForest() {
   drawClues(G, gctx, addSprite, R);
   // 密林：比官道更密、更暗
   const trees = [];
-  // 要看得見的地面：林道、礦坑小徑、第 4 章的血跡路線（每 30px 取一點）
+  // 要看得見的地面：林道、礦坑小徑、第 4 章舊獵道通往空地的側道（每 30px 取一點）
   const seen = [];
-  for (const line of [FO_ROAD, FO_PATH, ...FO_BRANCHES, BLOOD_TRAIL]) for (let i = 1; i < line.length; i++) {
+  for (const line of [FO_ROAD, FO_PATH, ...FO_BRANCHES, FO_HUNT_TRAIL]) for (let i = 1; i < line.length; i++) {
     const [x0, y0] = line[i - 1], [x1, y1] = line[i], n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 30);
     for (let k = 0; k <= n; k++) seen.push([x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n]);
   }

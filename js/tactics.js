@@ -2,15 +2,17 @@
 // 清河村保衛戰（戰棋）：鏡頭停在南邊村口，地圖疊上 48px 格子
 // 我方：小蝦米、阿武、有兵器的民兵、瞭望台弓手；敵方：黑風寨分波從南邊官道湧來，想穿過牌樓、過橋闖進村裡
 // 柵欄、瞭望台等建設本身就是地圖上的障礙物，所以準備的成果會直接反映在棋盤上
+// 劇情戰（T.sc）：沿用同一套棋盤、選單、AI 與繪製；開場、回合結束、倒下、勝敗與上方回合列交給劇情檔（例如 ch04.js）
 const TS = 48, T_COLS = 20, T_ROWS = 11;
-const T = { on: false };
+const T = { on: false, sc: null };
 
 // ---------- 棋盤 ----------
 const tCenter = (c, r) => [T.ox + c * TS + TS / 2, T.oy + r * TS + TS / 2];
 const tCell = (x, y) => [Math.floor((x - T.ox) / TS), Math.floor((y - T.oy) / TS)];
 const tIn = (c, r) => c >= 0 && r >= 0 && c < T_COLS && r < T_ROWS;
 const tKey = (c, r) => c + ',' + r;
-const unitAt = (c, r) => T.units.find((u) => u.hp > 0 && u.c === c && u.r === r);
+// 重傷倒地（downed）的人仍佔著格子
+const unitAt = (c, r) => T.units.find((u) => (u.hp > 0 || u.downed) && u.c === c && u.r === r);
 const tDist = (a, b) => Math.abs(a.c - b.c) + Math.abs(a.r - b.r);
 // 一格能不能走：取格子中心與上下兩點，都沒撞到地形才算可走
 function tBuildGrid() {
@@ -63,6 +65,8 @@ function tSheet(kind) {
   if (kind === 'guard' && ch('guard')) return [ch('guard'), CHAR_FW];
   if (kind === 'militia') return [ch('fisher') || heroImg, CHAR_FW];
   if (kind === 'archer') return [ch('traveler') || heroImg, CHAR_FW];
+  if (kind === 'qin' && ch('qinwufeng')) return [ch('qinwufeng'), CHAR_FW];
+  if (kind === 'masked' && ch('masked')) return [ch('masked'), CHAR_FW];
   if (kind === 'leader' && MON_ART.boss.walk) return [MON_ART.boss.walk, 96];
   if (MON_ART.bandit.walk) return [MON_ART.bandit.walk, 96];
   return [heroImg, CHAR_FW];
@@ -91,7 +95,7 @@ function tFree(c, r) {
 // ---------- 開始與結束 ----------
 function startTactics() {
   const f = F(), v = V();
-  T.on = true; T.units = []; T.turn = 1; T.phase = 'player'; T.sel = null; T.mode = null; T.breach = 0; T.lostMilitia = 0; T.busy = 0; T.cursor = null; T.msg = '';
+  T.on = true; T.sc = null; T.units = []; T.turn = 1; T.phase = 'player'; T.sel = null; T.mode = null; T.breach = 0; T.lostMilitia = 0; T.busy = 0; T.cursor = null; T.msg = '';
   // 棋盤頂端放在河北岸，往南延伸到村口外的空地
   T.ox = Math.round(Math.max(0, Math.min(G.W - VW, GATE.x - VW / 2))); T.oy = Math.round(Math.max(0, Math.min(G.H - VH, riverY(GATE.x) - RIVER_HW - 60)));
   T.cx = T.ox + VW / 2; T.cy = T.oy + VH / 2;
@@ -142,6 +146,7 @@ function endTactics(win) {
   Music.setMode('field');
   const hero = T.units.find((u) => u.kind === 'hero');
   S.hp = Math.max(1, hero.hp);
+  if (T.sc) return T.sc.end(win);
   refreshNpcs(); player.x = GATE.x; player.y = GATE.y + 50; player.dir = 0;
   if (win) raidWin(T.lostMilitia, T.breach); else raidLose();
 }
@@ -181,20 +186,28 @@ function tCast(id) {
 function tItemMenu() {
   const u = T.sel, items = usable().map((id) => {
     const it = ITEMS[id];
-    return { label: it.name, note: '×' + S.inv[id], off: (it.heal && !it.mana && u.hp >= u.maxHp) || (it.mana && !it.heal && S.mp >= stat.maxMp()), act: () => {
-      take(id);
-      if (it.heal) { const n = Math.min(u.maxHp - u.hp, it.heal); u.hp += n; tFloat(u, '+' + n, '#8fe07a'); }
-      if (it.mana) { S.mp = Math.min(stat.maxMp(), S.mp + it.mana); tFloat(u, '精力 +' + it.mana, '#80b8ff'); }
-      tDone(u);
+    // 劇情戰：療傷藥也能給相鄰的受傷隊友（例如把止血草遞給秦無風）
+    const mates = it.heal ? T.units.filter((o) => o.side === 'ally' && o.hp > 0 && o.hp < o.maxHp && (o === u || (T.sc && tDist(o, u) <= 1))) : [];
+    return { label: it.name, note: '×' + S.inv[id], off: (it.heal && !it.mana && !mates.length) || (it.mana && !it.heal && S.mp >= stat.maxMp()), act: () => {
+      const use = (v) => {
+        take(id);
+        if (it.heal) { const n = Math.min(v.maxHp - v.hp, it.heal); v.hp += n; tFloat(v, '+' + n, '#8fe07a'); }
+        if (it.mana) { S.mp = Math.min(stat.maxMp(), S.mp + it.mana); tFloat(u, '精力 +' + it.mana, '#80b8ff'); }
+        tDone(u);
+      };
+      if (mates.length && !(mates.length === 1 && mates[0] === u)) return tPickTarget(mates, use, true);
+      use(u);
     } };
   });
   T.menu = { items, idx: Math.max(0, items.findIndex((i) => !i.off)), back: tOpenMenu };
 }
-function tPickTarget(list, fn) { T.mode = 'target'; T.targets = list; T.onTarget = fn; T.menu = null; }
+// ally：選的是自己人（綠色標示），例如遞藥
+function tPickTarget(list, fn, ally) { T.mode = 'target'; T.targets = list; T.onTarget = fn; T.menu = null; T.pickAlly = !!ally; }
 function tDone(u) {
   u.acted = true; T.sel = null; T.menu = null; T.mode = null;
-  // 可操控的角色都行動完了，就自動結束回合
-  if (tCtrl().every((c) => c.acted)) setTimeout(tEndTurn, 500);
+  // 可操控的角色都行動完了，就自動結束回合（劇情對話開著就等對話結束）
+  const auto = () => (D.open ? setTimeout(auto, 200) : tEndTurn());
+  if (tCtrl().every((c) => c.acted)) setTimeout(auto, 500);
 }
 // 取消：目標／移動 → 回選單；子選單 → 回上一層；主選單 → 已移動就退回原位，否則取消選取
 function tBack() {
@@ -268,9 +281,11 @@ function tAttack(a, b, power = 1) {
   if (b.guard) d = Math.max(1, Math.round(d * 0.5));
   b.hp = Math.max(0, b.hp - d); b.flash = 0.3; a.lunge = 0.2;
   tFloat(b, (crit ? '暴擊 ' : '') + d, b.side === 'ally' ? '#ff8a70' : crit ? '#ffd040' : '#fff');
+  if (T.sc && T.sc.onHit) T.sc.onHit(a, b);
   if (b.hp <= 0) tDie(b);
 }
 function tDie(u) {
+  if (T.sc) return T.sc.onDie(u);
   if (u.kind === 'militia') T.lostMilitia++;
   if (u.kind === 'hero') { T.phase = 'over'; setTimeout(() => talk([`（${HERO_NAME}重傷倒地……）`, () => endTactics(false)]), 700); }
 }
@@ -279,6 +294,7 @@ async function tRunPhases() {
   T.busy = 1;
   T.phase = 'ally'; if (!(await tAiTurn('ally'))) return;
   T.phase = 'enemy'; if (!(await tAiTurn('enemy'))) return;
+  if (T.sc && !(await T.sc.turnEnd())) return;
   T.turn++; T.phase = 'player'; T.busy = 0;
   for (const u of T.units) { u.acted = false; u.moved = false; if (u.side === 'ally') u.guard = false; }
   tSpawnWaves();
@@ -290,27 +306,32 @@ async function tAiTurn(side) {
   const wait = (ms) => new Promise((res) => setTimeout(res, ms));
   const foeSide = side === 'ally' ? 'enemy' : 'ally';
   for (const a of T.units.filter((u) => u.side === side && u.hp > 0 && !u.ctrl)) {
+    // 劇情戰的對話開著時，等玩家讀完再動
+    while (D.open) await wait(120);
     if (!T.on || T.phase === 'over') return false;
     if (a.hp <= 0) continue;
-    const near = () => T.units.filter((u) => u.side === foeSide && u.hp > 0 && tDist(u, a) <= a.rng).sort((x, y) => x.hp - y.hp)[0];
+    // prefer：劇情戰裡指定優先找誰（例如蒙面人甲盯小蝦米、乙盯秦無風）；找不到才打最弱的
+    const near = () => { const inR = T.units.filter((u) => u.side === foeSide && u.hp > 0 && tDist(u, a) <= a.rng); return inR.find((u) => u.kind === a.prefer) || inR.sort((x, y) => x.hp - y.hp)[0]; };
     let tgt = near();
     if (!tgt && a.mv) {
-      const foes = T.units.filter((u) => u.side === foeSide && u.hp > 0 && tDist(u, a) <= (side === 'enemy' ? 6 : 5));
+      let foes = T.units.filter((u) => u.side === foeSide && u.hp > 0 && tDist(u, a) <= (T.sc ? 99 : side === 'enemy' ? 6 : 5));
+      const pref = foes.find((f) => f.kind === a.prefer); if (pref) foes = [pref];
       const adj = (c, r) => foes.some((f) => Math.abs(f.c - c) + Math.abs(f.r - r) === 1);
-      const path = foes.length ? tPath(a, adj) : side === 'enemy' ? tPath(a, (c, r) => r <= T.goalRow) : null;
+      const path = foes.length ? tPath(a, adj) : side === 'enemy' && !T.sc ? tPath(a, (c, r) => r <= T.goalRow) : null;
       if (path) { let n = 0; for (const [c, r] of path) { if (n >= a.mv || unitAt(c, r)) break; tMove(a, c, r); n++; await wait(110); } }
-      if (side === 'enemy' && a.r <= T.goalRow) { // 闖進村裡
+      if (side === 'enemy' && !T.sc && a.r <= T.goalRow) { // 闖進村裡
         a.hp = 0; a.alpha = 0; T.breach++; T.msg = `賊人闖過橋頭！（${T.breach} / 4）`; T.msgT = 2;
         if (T.breach >= 4) { T.phase = 'over'; await wait(600); talk(['（賊人一批批闖進村裡，四處放火搶糧……）', () => endTactics(false)]); return false; }
         continue;
       }
       tgt = near();
     }
-    if (tgt) { await wait(150); tAttack(a, tgt); await wait(350); if (T.phase === 'over') return false; }
+    if (tgt) { await wait(150); tAttack(a, tgt); await wait(350); while (D.open) await wait(120); if (T.phase === 'over') return false; }
   }
   return T.on && T.phase !== 'over';
 }
 function tCheckWin() {
+  if (T.sc) return; // 劇情戰的勝負由劇情檔判定（敵人撤退）
   if (T.waves.every((w) => w.done) && !T.units.some((u) => u.side === 'enemy' && u.hp > 0)) {
     T.phase = 'over'; setTimeout(() => talk(['（最後一個賊人丟下火把，逃回了官道。）', () => endTactics(true)]), 500);
   }
@@ -322,7 +343,7 @@ function updateTactics(dt) {
     u.moving = Math.hypot(tx - u.x, ty - u.y) > 1;
     u.x += Math.max(-sp, Math.min(sp, tx - u.x)); u.y += Math.max(-sp, Math.min(sp, ty - u.y));
     u.flash = Math.max(0, u.flash - dt); u.lunge = Math.max(0, (u.lunge || 0) - dt);
-    if (u.hp <= 0) u.alpha = Math.max(0, u.alpha - dt * 2);
+    if (u.hp <= 0) u.alpha = Math.max(u.downed ? 0.6 : 0, u.alpha - dt * 2);
   }
   if (T.phase === 'player' && !T.busy) tCheckWin();
 }
@@ -335,11 +356,11 @@ function drawTactics(t) {
     const x = T.ox + c * TS - cam.x, y = T.oy + r * TS - cam.y;
     if (!tPass(c, r)) continue;
     ctx.strokeStyle = 'rgba(255,240,200,.12)'; ctx.strokeRect(x + 0.5, y + 0.5, TS - 1, TS - 1);
-    if (r <= T.goalRow) { ctx.fillStyle = 'rgba(200,60,40,.10)'; ctx.fillRect(x, y, TS, TS); }
+    if (!T.sc && r <= T.goalRow) { ctx.fillStyle = 'rgba(200,60,40,.10)'; ctx.fillRect(x, y, TS, TS); }
   }
   const fill = (c, r, col) => { ctx.fillStyle = col; ctx.fillRect(T.ox + c * TS - cam.x + 2, T.oy + r * TS - cam.y + 2, TS - 4, TS - 4); };
   if (T.sel && T.mode === 'move') for (const [c, r] of T.reach.values()) fill(c, r, 'rgba(90,160,255,.32)');
-  if (T.mode === 'target') for (const u of T.targets) fill(u.c, u.r, `rgba(255,70,50,${0.3 + Math.sin(t / 150) * 0.12})`);
+  if (T.mode === 'target') for (const u of T.targets) fill(u.c, u.r, T.pickAlly ? `rgba(90,220,110,${0.3 + Math.sin(t / 150) * 0.12})` : `rgba(255,70,50,${0.3 + Math.sin(t / 150) * 0.12})`);
   if (T.sel) { ctx.strokeStyle = '#ffe070'; ctx.lineWidth = 2; ctx.strokeRect(T.ox + T.sel.c * TS - cam.x + 1, T.oy + T.sel.r * TS - cam.y + 1, TS - 2, TS - 2); }
   // 單位（依 y 排序）
   for (const u of [...T.units].filter((u) => u.alpha > 0).sort((a, b) => a.y - b.y)) {
@@ -347,7 +368,7 @@ function drawTactics(t) {
     ctx.globalAlpha = u.alpha * (u.acted && u.ctrl && T.phase === 'player' ? 0.55 : 1);
     ctx.fillStyle = u.side === 'ally' ? 'rgba(80,150,255,.45)' : 'rgba(255,70,50,.45)';
     ctx.beginPath(); ctx.ellipse(x, y, 16, 6, 0, 0, Math.PI * 2); ctx.fill();
-    if (u.flash > 0) ctx.filter = 'brightness(2.4)';
+    if (u.flash > 0) ctx.filter = 'brightness(2.4)'; else if (u.downed) ctx.filter = 'grayscale(1) brightness(.7)';
     const fr = u.moving ? Math.floor(t / 90) % 8 : 0, lx = u.lunge ? [0, 0, -6, 6][u.dir] : 0, ly = u.lunge ? [6, -6, 0, 0][u.dir] : 0;
     smoothFor(u.sheet);
     ctx.drawImage(u.sheet, fr * u.fw, u.dir * u.fw, u.fw, u.fw, x - sz / 2 + lx, y - FOOT * sc + ly, sz, sz);
@@ -359,7 +380,7 @@ function drawTactics(t) {
     ctx.globalAlpha = 1;
   }
   // 瞭望台：下一波敵人的進場位置（紅色箭頭）
-  const nw = F().build_tower && T.waves.find((w) => !w.done);
+  const nw = !T.sc && F().build_tower && T.waves.find((w) => !w.done);
   if (nw) for (let i = 0; i < nw.n; i++) {
     const x = T.ox + Math.round(T_COLS / 2 + (i - nw.n / 2) * 2.5) * TS + TS / 2 - cam.x, y = T.oy + (T_ROWS - 1) * TS + TS / 2 - cam.y + Math.sin(t / 200) * 3;
     ctx.fillStyle = 'rgba(255,80,50,.75)'; ctx.beginPath(); ctx.moveTo(x, y - 14); ctx.lineTo(x - 10, y + 4); ctx.lineTo(x + 10, y + 4); ctx.fill();
@@ -369,7 +390,8 @@ function drawTactics(t) {
   // 上方回合列
   const allies = T.units.filter((u) => u.side === 'ally' && u.hp > 0), foes = T.units.filter((u) => u.side === 'enemy' && u.hp > 0);
   const next = T.waves.find((w) => !w.done);
-  const bar = `第 ${T.turn} 回合 · ${T.phase === 'player' ? '我方行動' : T.phase === 'ally' ? '友軍行動' : T.phase === 'enemy' ? '敵方行動' : ''}　我方 ${allies.length}　敵方 ${foes.length}${next ? `　下一波：第 ${next.turn} 回合` : ''}　闖入 ${T.breach}/4`;
+  const phase = T.phase === 'player' ? '我方行動' : T.phase === 'ally' ? '友軍行動' : T.phase === 'enemy' ? '敵方行動' : '';
+  const bar = T.sc ? `第 ${T.turn} 回合 · ${phase}　${T.sc.bar()}` : `第 ${T.turn} 回合 · ${phase}　我方 ${allies.length}　敵方 ${foes.length}${next ? `　下一波：第 ${next.turn} 回合` : ''}　闖入 ${T.breach}/4`;
   ctx.font = 'bold 15px "Noto Serif TC",serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const w = ctx.measureText(bar).width + 40;
   ctx.fillStyle = '#1a1210e0'; ctx.strokeStyle = '#c9a45c'; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(VW / 2 - w / 2, 10, w, 32, 6); ctx.fill(); ctx.stroke();
@@ -383,6 +405,8 @@ function drawTactics(t) {
     ctx.font = '13px system-ui'; ctx.fillStyle = '#e8dcc0';
     ctx.fillText(`氣血 ${info.hp}/${info.maxHp}　攻 ${info.atk}　防 ${info.def}`, 24, VH - 40);
     ctx.fillText(`移動 ${info.mv}　射程 ${info.rng}${info.acted ? '　（已行動）' : ''}`, 24, VH - 22);
+    // note：劇情戰的狀態說明（中毒、左肩挫傷、重傷倒地）
+    if (info.note) { ctx.font = '12px system-ui'; ctx.fillStyle = '#d0a0ff'; ctx.fillText(info.note, 24, VH - 92); }
   }
   // 右下按鈕
   // 行動選單：靠在選取的人物右邊
@@ -399,7 +423,7 @@ function drawTactics(t) {
       if (it.note) { ctx.textAlign = 'right'; ctx.font = '12px system-ui'; ctx.fillStyle = it.off ? '#6a6458' : '#9fd0ff'; ctx.fillText(it.note, mx + mw - 10, iy + 13); }
     });
   }
-  if (T.mode === 'target' || T.mode === 'move') { ctx.textAlign = 'center'; ctx.font = 'bold 14px system-ui'; ctx.fillStyle = '#ffe2a4'; ctx.fillText(T.mode === 'move' ? '點藍色格子移動（右鍵／Esc 取消）' : '點紅色目標（右鍵／Esc 取消）', VW / 2, VH - 28); }
+  if (T.mode === 'target' || T.mode === 'move') { ctx.textAlign = 'center'; ctx.font = 'bold 14px system-ui'; ctx.fillStyle = '#ffe2a4'; ctx.fillText(T.mode === 'move' ? '點藍色格子移動（右鍵／Esc 取消）' : T.pickAlly ? '點綠色的人（右鍵／Esc 取消）' : '點紅色目標（右鍵／Esc 取消）', VW / 2, VH - 28); }
   if (T.phase === 'player') for (const [k, label] of [['end', '結束回合 Q']]) {
     const [x, y, bw, bh] = T_BTN[k], off = false;
     ctx.globalAlpha = off ? 0.45 : 1; ctx.fillStyle = '#40382a'; ctx.strokeStyle = '#c9a45c'; ctx.beginPath(); ctx.roundRect(x, y, bw, bh, 5); ctx.fill(); ctx.stroke();

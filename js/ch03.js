@@ -510,8 +510,8 @@ Object.assign(DIALOGUES, {
     '（沒有人回答。）',
     '（黑松林深處，一場追逐正悄悄逼近清河村。）',
     '【第03章 完】',
-    // 章節完成：天亮 → 第 4 章（「在王宅休息一晚」視為已完成）→ 自動存檔
-    { effects: [{ type: 'hook', name: 'dawn' }, { type: 'set_flag', key: 'ch03_complete' }, { type: 'set_flag', key: 'ch04_ready' }, { type: 'chapter', id: 'ch04' }, { type: 'hook', name: 'autosave' }] },
+    // 章節完成：天亮（暫住之約第 2 日）→ 第 4 章 → 自動存檔
+    { effects: [{ type: 'hook', name: 'dawn' }, { type: 'set_flag', key: 'ch03_complete' }, { type: 'chapter', id: 'ch04' }, { type: 'hook', name: 'autosave' }] },
   ] },
 });
 
