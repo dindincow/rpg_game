@@ -43,6 +43,19 @@ function buildDevPanel() {
   btn('材料各 +10', () => { for (const id of ['wood', 'stone', 'iron_ore', 'herb']) give(id, 10); });
   btn('氣血精力全滿', () => healAll());
   btn('黑風寨今夜來襲', () => { F().auth = 1; F().raidDone = 0; F().raidDay = S.day; });
+  // 劇情跳關：補齊前面章節的完成旗標，傳到王宅；from 給了就從那句（找 hook 名稱）開始播
+  const CH04_DONE = ['ch1_wolves', 'ch02_rescued', 'ch02_entered', 'ch02_chief', 'ch02_permit', 'ch02_led', 'ch02_wu_left', 'ch02_complete', 'wang_house_repaired', 'ch03_wake_start', 'ch03_chief_done', 'ch03_complete',
+    'ch04_morning', 'ch04_count_start', 'ch04_inventory', 'ch04_errand', 'ch04_joke', 'ch04_encounter', 'ch04_to_cave', 'ch04_cave', 'ch04_names', 'ch04_handshake', 'ch04_chief', 'ch04_qin_stable'];
+  const jumpWang = (extra, hour, hook) => {
+    for (const k of [...CH04_DONE, ...extra]) F()[k] = 1;
+    for (const k of ['ch04_guest', 'ch04_qin_up', 'ch04_complete']) if (!extra.includes(k)) delete F()[k];
+    ST().chapter = 'ch04';
+    fade(() => { switchMap('in_river', WROOM.door.x, WROOM.door.y - 40, 1); S.time = Math.max(S.time, hour * 60); refreshNpcs(); }, 600);
+    const lines = DIALOGUES.dlg_ch04_guest.lines, i = hook ? lines.findIndex((l) => l.effects && l.effects.some((e) => e.name === hook)) : 0;
+    setTimeout(() => talk(dialogueItems('dlg_ch04_guest').slice(Math.max(0, i))), 1300);
+  };
+  btn('跳到：秦無風回王宅', () => jumpWang([], 17.5));
+  btn('跳到：王宅守夜（夜深了）', () => jumpWang(['ch04_guest'], 22, 'night'));
   btn('存檔', () => toast(saveGame() ? '已存檔' : '無法存檔'));
   flags.appendChild(acts);
   box.appendChild(flags);

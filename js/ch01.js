@@ -59,7 +59,7 @@ function updatePhone(dt) {
 }
 
 // ---------- 開場音樂與音效 ----------
-// 辦公室那段播 assets/music/辦公室.mp3；被吸進螢幕時音樂斷掉，醒來後才接回地圖音樂
+// 辦公室那段播 assets/音樂/辦公室.mp3；被吸進螢幕時音樂斷掉，醒來後才接回地圖音樂
 const SceneMusic = {
   a: null, timer: null,
   play(src) {
@@ -154,7 +154,7 @@ const LEAP_HOPS = [[170, 70, 65, -20, 90], [65, -20, -55, -60, 85], [-55, -60, -
 const LEAP_WAIT = 1.1, LEAP_HOP = 0.36, LEAP_PAUSE = 0.08;
 function shadowLeap() {
   D.hold = true; $('dlg').classList.remove('open');
-  const art = CHAR_ART.qinwufeng, sheet = art && art.walk, fw = sheet ? art.fw || CHAR_FW : 0;
+  const art = CHAR_ART.qinwufeng, sheet = art && art.walk, fw = sheet ? cellOf(sheet, art.fw || CHAR_FW) : 0;
   const t0 = LEAP_WAIT + 0.2, end = t0 + LEAP_HOPS.length * (LEAP_HOP + LEAP_PAUSE), leaves = [];
   let t = 0, last = performance.now(), clashed = false, released = false;
   // 第 i 跳的位置（世界座標）；停頓時停在落腳處
@@ -211,7 +211,8 @@ Object.assign(STORY_HOOKS, {
   cgUi: (e) => cgUi(e.ui),
   flash: () => flashWhite(),
   suckIn: () => suckIn(),
-  sceneMusic: (e) => { if (Music.on) SceneMusic.play(e.src); },
+  // 換成場景專屬曲子：地圖音樂先淡出（用 bgmResume 接回）
+  sceneMusic: (e) => { if (Music.on) { Music.fadeBgm(0, 1500); SceneMusic.play(e.src); } },
   // 開場結束：接回地圖音樂
   bgmResume: () => { SceneMusic.stop(800); if (Music.on) Music.fadeBgm(Music.vol, 2500); },
   wakeFocus: () => wakeFocus(),
@@ -226,7 +227,7 @@ Object.assign(STORY_HOOKS, {
 // 爬起來之後探頭探腦：有張望動作圖（hero_look.png，單列 8 格）就照格播放；沒有圖時改用轉方向＋左右探身
 // 播放時對話框先收起，播完才接下一句
 // poseImg／lookFr：目前播放中的單列動作圖與格數（game.js drawPlayer 會改畫這一格）
-let heroLookImg = null, heroSitImg = null, heroDustImg = null, heroPackImg = null, poseImg = null, lookFr = null;
+let heroLookImg = null, heroSitImg = null, heroDustImg = null, heroPackImg = null, heroSweepImg = null, poseImg = null, lookFr = null;
 // 動作圖各格：0 扶頭茫然、1 看左、2 手遮額頭望左、3 縮肩緊張、4 看右、5 望右、6 抬頭看樹梢、7 抓背包冒冷汗
 const LOOK_SEQ = [[0, 900], [1, 650], [2, 1000], [3, 550], [4, 650], [5, 1000], [6, 1000], [7, 1100]];
 // [朝向, 往那邊探出的距離, 停留毫秒]；朝向 0 下 1 上 2 左 3 右
@@ -267,6 +268,8 @@ const SIT_DOWN = [[0, 200], [1, 220], [2, 220], [3, 220], [4, 450], [5, 900], [6
 const SIT_UP = [[4, 260], [2, 260], [1, 260], [0, 200]];
 // 拍泥（hero_dust.png）：0 站、1 低頭、2–5 拍大腿／屁股／膝蓋、6 甩手、7 站
 const DUST = [[0, 150], [1, 260], [2, 200], [3, 200], [4, 240], [5, 200], [6, 300], [7, 160]];
+// 掃地（hero_sweep.png）：8 格掃帚來回，掃兩輪
+const SWEEP = [0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7].map((f) => [f, 150]);
 // 背背包（hero_pack.png）：0 背包在腳邊、1 低頭、2 彎腰抓肩帶、3 提起、4 甩上肩、5 套肩帶、6 拉緊、7 站好
 const PACK = [[0, 260], [1, 260], [2, 280], [3, 220], [4, 220], [5, 260], [6, 260], [7, 160]];
 // ---------- 小人物的簡單演技：坐下、頭上冒符號、藥草光點 ----------
@@ -319,7 +322,7 @@ Object.assign(STORY_HOOKS, {
 });
 Object.assign(STORY_HOOKS, {
   // { who, on }：坐下／站起（npc 或 'player'）；{ who, dir }：轉向
-  sit: (e) => { const a = actorOf(e.who); if (a) a.sit = e.on !== false; },
+  sit: (e) => { const a = actorOf(e.who); if (a) { a.sit = e.on !== false; a.stool = a.sit && !!e.stool; } },
   face: (e) => { const a = actorOf(e.who); if (a) { a.dir = e.dir; a.frame = 0; } },
   emote: (e) => emote(e.who, e.icon),
   herbGlow: (e) => herbGlow(e.who),
@@ -332,4 +335,5 @@ Object.assign(STORY_HOOKS, {
   sitUp: () => playPose(heroSitImg, SIT_UP, false),
   dustOff: () => playPose(heroDustImg, DUST, false),
   packUp: () => playPose(heroPackImg, PACK, false),
+  sweep: () => playPose(heroSweepImg, SWEEP, false),
 });

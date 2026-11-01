@@ -62,11 +62,12 @@ function tPath(u, goalFn) {
 function tSheet(kind) {
   const ch = (id) => CHAR_ART[id] && CHAR_ART[id].walk;
   if (kind === 'hero') return [heroSheet(), cellOf(heroSheet())];
-  if (kind === 'guard' && ch('guard')) return [ch('guard'), CHAR_FW];
-  if (kind === 'militia') return [ch('fisher') || heroImg, CHAR_FW];
-  if (kind === 'archer') return [ch('traveler') || heroImg, CHAR_FW];
-  if (kind === 'qin' && ch('qinwufeng')) return [ch('qinwufeng'), CHAR_FW];
-  if (kind === 'masked' && ch('masked')) return [ch('masked'), CHAR_FW];
+  const at = (img) => [img, cellOf(img)];
+  if (kind === 'guard' && ch('guard')) return at(ch('guard'));
+  if (kind === 'militia') return at(ch('fisher') || heroImg);
+  if (kind === 'archer') return at(ch('traveler') || heroImg);
+  if (kind === 'qin' && ch('qinwufeng')) return at(ch('qinwufeng'));
+  if (kind === 'masked' && ch('masked')) return at(ch('masked'));
   if (kind === 'leader' && MON_ART.boss.walk) return [MON_ART.boss.walk, 96];
   if (MON_ART.bandit.walk) return [MON_ART.bandit.walk, 96];
   return [heroImg, CHAR_FW];

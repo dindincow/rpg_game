@@ -79,7 +79,8 @@ function convertWalk(img, outFile) {
   let bands = runs(prof, 2, 3).filter(([a, b]) => b - a > 60);
   const typical = bands.slice(0, 3).reduce((s, [a, b]) => s + b - a, 0) / 3;
   bands = bands.slice(0, 4).map(([a, b]) => [a, Math.min(b, a + Math.round(typical * 1.12))]);
-  if (bands.length < 4) throw new Error('找不到 4 列行走圖');
+  // 上下兩列的頭髮、飄帶貼在一起找不到空隙時，改用等分 4 列
+  if (bands.length < 4) bands = Array.from({ length: 4 }, (_, i) => [Math.round(i * img.h / 4), Math.round((i + 1) * img.h / 4)]);
   const frames = [];
   for (const [y0, y1] of bands) {
     const px = new Array(img.w).fill(0);

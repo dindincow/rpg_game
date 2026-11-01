@@ -18,7 +18,7 @@ const STORY_CHARS = {
   lao_wu: { name: '老吳', desc: '清河村樵夫，為你作保的人', rel: { trust: 25, affection: 20, ideology: 20 } },
   chen_boan: { name: '陳伯安', desc: '清河村村長，戒備外人', rel: { trust: 5, affection: 10, ideology: 15 } },
   han_tieshan: { name: '韓鐵山', desc: '鐵匠，嘴硬心軟', rel: { trust: 10, affection: 10, ideology: 15 } },
-  gu_wenyuan: { name: '顧文淵', desc: '落魄書生，精於帳目', rel: { trust: 10, affection: 10, ideology: 20 } },
+  gu_wenyuan: { name: '顧文淵', desc: '世家公子，精於帳目', rel: { trust: 10, affection: 10, ideology: 20 } },
   qin_wufeng: { name: '秦無風', desc: '冷面劍客，身中劇毒，對人充滿戒心', rel: { trust: 0, affection: 5, ideology: 10 } },
 };
 
@@ -76,7 +76,7 @@ const WHOLE = { x: 322, y: 283 };
 const CH03 = {
   rubble: { x: WANG.x - 130, y: WANG.y + 50 }, basket: { x: WANG.x + 135, y: WANG.y + 55 }, weeds: { x: WANG.x - 60, y: WANG.y + 125 },
   good: { x: WANG.x - 175, y: WANG.y + 105 }, rotten: { x: WANG.x - 110, y: WANG.y + 150 }, tiles: { x: WANG.x + 80, y: WANG.y + 130 },
-  piles: { x: WANG.x - 205, y: WANG.y + 62 }, drain: { x: WANG.x + 165, y: WANG.y + 95 },
+  piles: { x: WANG.x - 205, y: WANG.y + 62 }, drain: { x: WANG.x + 85, y: WANG.y + 60 },
   wu: { x: WANG.x - 70, y: WANG.y + 80 }, road: { x: WANG.x - 330, y: WANG.y + 100 }, plaque: { x: WANG.x + 40, y: WANG.y + 32 },
   window: { x: 909, y: 236 }, sill: { x: 850, y: 322 }, cup: { x: 578, y: 352 },
 };
@@ -177,6 +177,7 @@ const QUESTS = {
       { text: '對照若蘭的筆記，在舊獵道旁採青脈草', item: 'qingmai', amount: 3, at: ['forest', CH04.herbs[0].x, CH04.herbs[0].y] },
       { text: '查看前方泥地上的痕跡', flag: 'ch04_traces', at: ['forest', CH04.hoof.x, CH04.hoof.y] },
       { text: '擊退圍攻秦無風的蒙面人', flag: 'ch04_battle_won', at: ['forest', CH04.clearing.x, CH04.clearing.y] },
+      { text: '帶秦無風到溪谷的避風石洞', flag: 'ch04_cave', at: ['forest', FO_CAVE.x, FO_CAVE.y + 30] },
       { text: '在避風石洞撐過一夜', flag: 'ch04_handshake' },
       { text: '回清河村，向村長說明', flag: 'ch04_chief' },
       { text: '到醫舍讓若蘭看傷', flag: 'ch04_qin_stable' },
@@ -232,6 +233,8 @@ const DIALOGUES = {
     { effects: [{ type: 'hook', name: 'suckIn' }] },
     '（電燈熄滅。）',
     '（……不知過了多久。）',
+    // 醒來後的森林：換成竹林尋蹤，開場結束 bgmResume 才接回地圖音樂
+    { effects: [{ type: 'hook', name: 'sceneMusic', src: 'assets/音樂/竹林尋蹤.mp3' }] },
     { cg: 'cg/第1章_森林醒來.png' },
     '（頰邊是潮濕的泥土。遠處，有什麼東西在林子裡低低地叫。）',
     { cg: null },
@@ -1000,9 +1003,9 @@ const STORY_NPCS = [
   { id: 'wolf_f', map: 'forest', name: '野狼', art: 'wolf', x: FO_TRACKS.x + 200, y: FO_TRACKS.y - 70, dir: 2, scale: 1.35, r: 1,
     show: { allFlags: ['ch01_wolf_out'], notFlags: ['ch01_wolf_gone'] }, talk: [] },
   // 村中：公倉前領粥的隊伍、屋簷下的小蓮祖孫
-  { id: 'xiaolian', map: 'village', name: '小蓮', art: 'kid', filter: 'hue-rotate(280deg) saturate(1.2) brightness(1.1)', x: CH02.granary.x - 50, y: CH02.granary.y + 75, dir: 1, scale: 1.05,
+  { id: 'xiaolian', map: 'village', name: '小蓮', art: 'xiaolian', x: CH02.granary.x - 50, y: CH02.granary.y + 75, dir: 1, scale: 1.05,
     show: { allFlags: ['ch02_entered'], notFlags: ['ch03_xl_visit'] }, talk: [[null, 'dlg_xiaolian']] },
-  { id: 'grandma', map: 'village', name: '小蓮的奶奶', art: 'liushen', filter: 'grayscale(.6) brightness(1.05)', x: CH02.grandma.x, y: CH02.grandma.y, dir: 3, scale: 1.2, sit: true,
+  { id: 'grandma', map: 'village', name: '小蓮的奶奶', art: 'grandma', x: CH02.grandma.x, y: CH02.grandma.y, dir: 3, scale: 1.2, sit: true,
     show: { allFlags: ['ch02_entered'], notFlags: ['ch03_xl_visit'] }, talk: [[null, 'dlg_grandma']] },
   { id: 'woman_g', map: 'village', name: '分粥的婦人', art: 'mother', x: CH02.granary.x, y: CH02.granary.y - 8, dir: 0, scale: 1.25,
     show: { allFlags: ['ch02_entered'], notFlags: ['ch02_porridge'] }, talk: [[null, 'dlg_ch02_woman']] },
@@ -1016,7 +1019,7 @@ const STORY_NPCS = [
   { id: 'ruolan_c', map: 'village', name: '沈若蘭', art: 'shenruolan', x: CH02.enter.x + 60, y: CH02.enter.y + 34, dir: 3, scale: 1.35,
     show: { allFlags: ['ch02_entered'], notFlags: ['ch02_porridge'] }, talk: [[null, 'dlg_ch02_ruolan_village']] },
   // 清河祠室內：村長盤問（小說第四幕「老吳帶著沈若蘭、小蝦米走進祠堂」）
-  { id: 'chief_s', map: 'in_shrine', name: '陳伯安', art: 'chief', filter: 'grayscale(.8) sepia(.35) brightness(1.15)', x: SHRINE_ROOM.chief.x, y: SHRINE_ROOM.chief.y, dir: 3, scale: 1.3,
+  { id: 'chief_s', map: 'in_shrine', name: '陳伯安', art: 'chief', x: SHRINE_ROOM.chief.x, y: SHRINE_ROOM.chief.y, dir: 3, scale: 1.3,
     show: { allFlags: ['ch02_porridge'], notFlags: ['ch02_permit'] }, talk: [] },
   { id: 'woman_s', map: 'in_shrine', name: '分粥的婦人', art: 'mother', x: SHRINE_ROOM.chief.x + 66, y: SHRINE_ROOM.chief.y + 18, dir: 2, scale: 1.25,
     show: { allFlags: ['ch02_porridge'], notFlags: ['ch02_permit', 'ch02_woman_out'] }, talk: [] },

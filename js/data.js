@@ -7,18 +7,21 @@ const HERO_NAME = '小蝦米';
 // 沒有素材的角色會自動改用主角圖染色與程式繪製的頭像
 const CHAR_FW = 86;
 const CHAR_ART = {
-  chief: { name: '陳伯安' }, kid: { name: '小豆' }, guard: { name: '阿武' }, farmer: { name: '王嬸' }, fisher: { name: '張叔' },
-  traveler: { name: '旅人' }, mother: { name: '吳嬸' }, innkeeper: { name: '店小二' }, smith: { name: '韓鐵山' },
+  chief: { name: '陳伯安', hd: 3 }, kid: { name: '小豆', hd: 3 }, guard: { name: '阿武', hd: 3 }, farmer: { name: '王嬸', hd: 3 }, fisher: { name: '張叔', hd: 3 },
+  traveler: { name: '旅人', hd: 3 }, mother: { name: '吳嬸', hd: 3 }, innkeeper: { name: '店小二', hd: 3 }, smith: { name: '韓鐵山', hd: 3 },
+  xiaolian: { name: '小蓮', hd: 3 }, grandma: { name: '小蓮的奶奶', hd: 3 }, laozhou: { name: '老周', hd: 3 },
   hero: { name: HERO_NAME, faceOnly: true },
-  // 地圖上的劇情野狼（第 1 章狼爪印）：沿用怪物走路圖 assets/monsters/wolf_walk.png（每格 96）
-  wolf: { name: '野狼', dir: 'monsters', walkOnly: true, fw: 96 },
-  liushen: { name: '劉嬸' }, afeng: { name: '學徒阿鋒', walkOnly: true }, xiaoliu: { name: '夥計小六', walkOnly: true }, ashui: { name: '阿水', walkOnly: true },
-  storyteller: { name: '說書先生' }, woodcutter: { name: '老吳' },
-  qinwufeng: { name: '秦無風' }, guwenyuan: { name: '顧文淵' }, shenruolan: { name: '沈若蘭' }, masked: { name: '蒙面人' },
-  boss: { name: '黑風寨主', dir: 'monsters', fw: 96 }, bandit: { name: '山賊', dir: 'monsters', fw: 96 },
+  // 地圖上的劇情野狼（第 1 章狼爪印）：沿用怪物走路圖 assets/怪物/wolf_walk.png（每格 96）
+  wolf: { name: '野狼', dir: '怪物', walkOnly: true, fw: 96 },
+  liushen: { name: '劉嬸', hd: 3 },afeng: { name: '學徒阿鋒', walkOnly: true }, xiaoliu: { name: '夥計小六', walkOnly: true }, ashui: { name: '阿水', walkOnly: true },
+  storyteller: { name: '說書先生', hd: 3 },
+  // 支線用：從青石縣城來的員外（還沒放進地圖）
+  yuanwai: { name: '孫員外', hd: 3 }, woodcutter: { name: '老吳', hd: 3 },
+  qinwufeng: { name: '秦無風', hd: 3 }, guwenyuan: { name: '顧文淵' }, shenruolan: { name: '沈若蘭', hd: 3 }, masked: { name: '蒙面人', hd: 3 },
+  boss: { name: '黑風寨主', dir: '怪物', fw: 96 }, bandit: { name: '山賊', dir: '怪物', fw: 96 },
   fogma: { name: '霧婆' }, lingxiao: { name: '凌霄' },
 };
-// 怪物素材（assets/monsters/）：<id>_walk.png 地圖用（每格 96×96、8×4）、<id>_battle.png 戰鬥用（面向右）
+// 怪物素材（assets/怪物/）：<id>_walk.png 地圖用（每格 96×96、8×4）、<id>_battle.png 戰鬥用（面向右）
 const MON_ART = { wolf: {}, snake: {}, boar: {}, bandit: {}, treant: {}, boss: {}, wraith: {}, fog_beast: {}, fog_sha: {} };
 
 const ITEMS = {

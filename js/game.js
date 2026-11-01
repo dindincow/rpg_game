@@ -7,7 +7,18 @@ C.width = VW * 2; C.height = VH * 2; ctx.scale(2, 2); ctx.imageSmoothingEnabled 
 // 主角圖格：高解析度圖每格是原本的 hd 倍；縮回原大小畫時改用平滑縮放，才不會出現鋸齒
 const hd3 = (img) => ((img.hd = 3), img);
 const cellOf = (img, fw = CHAR_FW) => fw * ((img && img.hd) || 1);
-const smoothFor = (img) => { ctx.imageSmoothingEnabled = !!(img && img.hd); ctx.imageSmoothingQuality = 'high'; };
+// 待機動作的播放順序：[格, 毫秒]；大多站定，偶爾做小動作
+// 小蝦米（hero_idle.png）：0 站定、1 眨眼、2 往旁邊看、3 回正、5 抬頭看、6 抓頭
+const HERO_IDLE_SEQ = [[0, 2600], [1, 140], [0, 2200], [2, 900], [3, 300], [0, 2000], [5, 1000], [0, 1800], [1, 140], [0, 1400], [6, 1300], [0, 400]];
+// 秦無風（qinwufeng_idle.png，v8）：0、2、3、7 站定、1 閉眼、4–5 手按劍柄、6 抬眼
+const QIN_IDLE_SEQ = [[0, 2600], [1, 160], [0, 2000], [2, 600], [3, 1400], [4, 400], [5, 1200], [4, 300], [0, 2000], [6, 1000], [7, 1400], [1, 160], [0, 1200]];
+CHAR_ART.qinwufeng.idleSeq = QIN_IDLE_SEQ; // 有 idleSeq 的角色會載入 assets/characters/<id>_idle.png
+function idleFrame(seq, now) {
+  let t = now % seq.reduce((s, [, ms]) => s + ms, 0);
+  for (const [fr, ms] of seq) { if (t < ms) return fr; t -= ms; }
+  return 0;
+}
+const smoothFor =(img) => { ctx.imageSmoothingEnabled = !!(img && img.hd); ctx.imageSmoothingQuality = 'high'; };
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const SAVE_KEY = 'qinghe_rpg_save_v1'; // 舊版單一存檔，讀取時當作第 1 格
@@ -86,16 +97,18 @@ function healAll() { S.hp = S.maxHp; S.mp = stat.maxMp(); }
 // ---------- 角色 ----------
 function tintSheet(img, filter) {
   const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
-  const g = c.getContext('2d'); g.filter = filter; g.drawImage(img, 0, 0); return c;
+  const g = c.getContext('2d'); g.filter = filter; g.drawImage(img, 0, 0); c.hd = img.hd; return c;
 }
 const NPC_DEFS = [
-  { id: 'chief', name: '陳伯安', x: 1262, y: 676, dir: 0, filter: 'grayscale(.8) sepia(.35) brightness(1.15)', scale: 1.3, wander: 70, speed: 26, hide: () => !F().chief },
-  { id: 'kid', name: '小豆', x: 1380, y: 770, filter: 'hue-rotate(-18deg) saturate(1.35) brightness(1.12)', scale: 1.1, wander: 240, speed: 75 },
-  { id: 'guard', name: '阿武', x: 1405, y: 1612, dir: 2, filter: 'saturate(.35) brightness(.78) contrast(1.25)', scale: 1.42, wander: 100, speed: 32 },
-  { id: 'farmer', name: '王嬸', x: 2060, y: 1170, filter: 'sepia(.55) hue-rotate(-12deg) saturate(1.1) brightness(1.1)', scale: 1.25, wander: 110, speed: 38 },
-  { id: 'fisher', name: '張叔', x: 1600, y: 1316, dir: 0, filter: 'grayscale(.45) hue-rotate(18deg) brightness(.86)', scale: 1.3 },
-  { id: 'traveler', name: '旅人', x: 300, y: 855, dir: 3, filter: 'sepia(.8) saturate(.55) brightness(.96)', scale: 1.35, wander: 90, speed: 30 },
+  { id: 'chief', name: '陳伯安', x: 1262, y: 676, dir: 0, scale: 1.3, wander: 70, speed: 26, hide: () => !F().chief },
+  { id: 'kid', name: '小豆', x: 1380, y: 770, scale: 1.1, wander: 240, speed: 75 },
+  { id: 'guard', name: '阿武', x: 1405, y: 1612, dir: 2, scale: 1.42, wander: 100, speed: 32 },
+  { id: 'farmer', name: '王嬸', x: 2060, y: 1170, scale: 1.25, wander: 110, speed: 38 },
+  { id: 'fisher', name: '張叔', x: 1600, y: 1316, dir: 0, scale: 1.3 },
+  { id: 'traveler', name: '旅人', x: 300, y: 855, dir: 3, scale: 1.35, wander: 90, speed: 30 },
   { id: 'storyteller', name: '說書先生', x: 1430, y: 920, dir: 2, scale: 1.3, wander: 110, speed: 22 },
+  // 支線「員外的馬車」：青石縣城來的孫員外，被西村口的落石擋住；第 3 章結束後出現
+  { id: 'yuanwai', art: 'yuanwai', name: '孫員外', x: 225, y: 770, dir: 2, scale: 1.3, hide: () => !F().ch03_complete },
   // 周老伯一家住河邊，平日在西邊河岸（原本住的河畔人家現在是王宅）
   { id: 'elder', name: '周老伯', x: 380, y: 1335, dir: 0, filter: 'grayscale(.85) brightness(1.15)', scale: 1.3 },
   { id: 'ashui', art: 'ashui', name: '阿水', x: 330, y: 1345, dir: 3, scale: 1.1, wander: 60, speed: 40 },
@@ -126,7 +139,11 @@ function moveActor(a, dx, dy, speed, dt) {
   const stuck = blocked(a.x, a.y, a);
   if (stuck || !blocked(nx, a.y, a)) { a.x = nx; moved = true; }
   if (stuck || !blocked(a.x, ny, a)) { a.y = ny; moved = true; }
-  a.anim += dt * (speed / 15); a.frame = Math.floor(a.anim) % (a.frames || 8);
+  a.anim += dt * (speed / 15);
+  // 走路圖可指定各方向的播放順序（例如「站→左跨→站→右跨」），跳過畫壞的格子；同樣 8 格時間走完一輪
+  const seq = a.sheet && a.sheet.walkSeq && a.sheet.walkSeq[a.dir];
+  // walkRate：只播少數幾格時可加快換格，免得每格停太久看起來卡
+  a.frame = seq ? seq[Math.floor(a.anim * (a.sheet.walkRate || 1) * seq.length / 8) % seq.length] : Math.floor(a.anim) % (a.frames || 8);
   return moved;
 }
 
@@ -163,7 +180,9 @@ function buildInteractables() {
 function switchMap(id, x, y, dir = 0) {
   G = MAPS[id]; S.map = id;
   refreshNpcs();
-  player.x = x; player.y = y; player.dir = dir; player.frame = 0; S.steps = 0;
+  // 舊存檔的座標可能落在地圖外（例如室內底圖換過尺寸），拉回地圖範圍內，不然人會「不見」
+  player.x = Math.max(20, Math.min(G.W - 20, x)); player.y = Math.max(30, Math.min(G.H - 30, y)); player.dir = dir; player.frame = 0; S.steps = 0;
+  player.lie = null; // 整張姿勢圖（躺床、趴床邊、盤腿）是畫在某張地圖的固定座標上，換地圖一定要清掉，不然人會「不見」
   leaves.length = 0; fireflies.length = 0;
   if (id === 'field') { applyFieldFlags(G); spawnMonsters(); }
   else if (id === 'mine') { applyMineFlags(G); monsters = []; }
@@ -300,6 +319,49 @@ function talkElder() {
   }
   talk([['周老伯', '雲山啊……老夫年輕時也去過一回。'], ['周老伯', '翻過山頭，是一片望不見盡頭的雲海，雲海底下，隱約有座古城。'], ['周老伯', '不過，那都是幾十年前的事嘍，呵呵。']]);
 }
+// 支線「員外的馬車」：F().yw 1 接下委託、2 完成。木材 ×2 當槓桿，路邊落石當支點
+function talkYuanwai() {
+  const f = F(), wood = S.inv.wood || 0;
+  if (!f.yw) return talk([
+    ['孫員外', '哎喲喲……這、這叫什麼事！'],
+    '（一輛裝滿木箱的馬車歪在落石旁，右後輪整個陷進泥坑。車夫推得滿頭大汗，車子動也不動。）',
+    ['孫員外', '老夫是青石縣城的孫德福，人稱孫員外！要去清河鎮收租，誰知這山路說塌就塌。'],
+    ['孫員外', '回頭想繞路，車輪又陷進這爛泥裡……你們村裡就沒個力氣大的？'],
+    [HERO_NAME, '（輪子陷得不深，是車太重。推是推不動的……可是旁邊剛好有塊落石。）'],
+    [HERO_NAME, '員外，不用找力氣大的。給我兩根結實的木頭，我用槓桿把車撬出來。'],
+    ['孫員外', '槓、槓什麼？你這紅毛小子說話怎麼古里古怪的。'],
+    { name: '孫員外', q: '要幫孫員外把馬車撬出來嗎？', choices: [
+      ['交給我吧', () => { f.yw = 1; toast('接受委託：「員外的馬車」'); return [
+        [HERO_NAME, '找兩根木材來就行。落石當支點，木頭當槓桿，一個人就撬得動。'],
+        ['孫員外', '哼，說得輕巧。真撬得出來，老夫重重有賞！']]; }],
+      ['改天吧', () => [['孫員外', '唉，窮鄉僻壤，果然指望不上……']]],
+    ] }]);
+  if (f.yw === 1 && wood < 2) return talk([
+    ['孫員外', '木頭呢？老夫在這兒乾等，日頭都曬得頭昏了。'],
+    `（還需要木材 ×2，目前有 ${wood}。）`]);
+  if (f.yw === 1) {
+    const done = (lines) => [() => { take('wood', 2); f.yw = 2; }, ...lines];
+    return talk([
+      '（你把一根木材橫墊在落石邊，另一根斜插進車輪底下的泥坑。）',
+      [HERO_NAME, '支點靠近重物，施力的那頭拉長……小學自然課教的。'],
+      '（你整個人壓上木頭的另一端——車輪「啵」的一聲從泥裡拔了出來。）',
+      ['孫員外', '這、這……出來了？一個人就撬出來了？！'],
+      ['孫員外', '好小子，有兩下子！這樣吧，老夫給你一百文。'],
+      ['孫員外', '……或者，車上有幾袋白米，原是要送去清河鎮的。你要是想做個順水人情，老夫也不是小氣的人。'],
+      { name: '孫員外', q: '要怎麼收這份謝禮？', choices: [
+        ['收下一百文', () => done([
+          ['孫員外', '拿著！出門在外，錢比什麼都實在。'],
+          () => { S.gold += 100; toast('獲得 100 文'); }])],
+        ['請員外把米捐給公倉', () => done([
+          [HERO_NAME, '錢就不用了。村裡的米缸都見底了，那幾袋米能不能送去公倉？'],
+          ['孫員外', '……你這小子，自己一文不要，倒替別人討起米來了。'],
+          ['孫員外', '罷了罷了！就說是我孫員外樂善好施，傳出去也是一樁美談！'],
+          '（車夫把三袋白米扛進了公倉。村民們圍過來，對著孫員外連聲道謝，員外笑得鬍子都翹起來了。）',
+          () => { S.gold += 20; toast('獲得 20 文（員外硬塞的）'); addHeart(10); }])],
+      ] }]);
+  }
+  talk([['孫員外', '山路一天不通，老夫一天走不了。'], ['孫員外', '你們這村子雖窮，人倒是挺實在的……呵呵。']]);
+}
 // 清河祠：第一次上香民心 +2，之後每天可以再拜一次
 function visitShrine() {
   const f = F();
@@ -355,12 +417,13 @@ const NPC_TALK = {
   },
   kid: (n) => cycle(n, [[['小豆', `${HERO_NAME}哥哥！聽說雲山上住著會飛的仙人，是真的嗎？`]], [['小豆', '我娘不讓我去河邊玩，說河裡有水鬼……我才不怕呢！']], [['小豆', '等我長大了，也要像你一樣出去闖蕩！']]]),
   farmer: (n) => cycle(n, [[['王嬸', '今年收成還不錯，就是山上的野豬又下來糟蹋莊稼。']], [['王嬸', '吳家兩口子心善，收留了你。出門在外，可別讓他們操心。']]]),
+  yuanwai: () => talkYuanwai(),
   fisher: (n) => cycle(n, [[['張叔', '這清河的魚啊，越到秋天越肥。']], [['張叔', '順著河往下游走三天，就是大江了。年輕時我常撐船去那兒賣魚。']], [['張叔', '噓……別嚇跑了我的魚。']]]),
   traveler: (n) => cycle(n, [[['旅人', '西邊往清河鎮的山路前幾日山崩，被落石堵死了。'], ['旅人', '我只好在這兒歇歇腳，等官府派人來清。']], [['旅人', '你們村子真是山明水秀，難怪有「清河」之名。']]]),
   storyteller: (n) => cycle(n, [
     [['說書先生', '（敲著折扇）話說三十年前，雲山守山的凌家劍客，與一位來歷不明的怪人聯手，鎮壓了山中妖靈！'], ['說書先生', '那怪人一身奇裝異服，說的話十句有九句聽不懂……鎮完妖靈便下山去了，從此音訊全無，怪哉怪哉……']],
-    [['說書先生', '雲山的霧，百年不散。老朽年輕時曾在山腳見過古城的輪廓，那城牆……高得看不見頂。']],
-    [['說書先生', '小子，雲山去過了嗎？老朽年輕時也想去闖一闖，可惜山高路遠，腿腳不濟嘍。']],
+    [['說書先生', '雲山的霧，百年不散。在下年輕時曾在山腳見過古城的輪廓，那城牆……高得看不見頂。']],
+    [['說書先生', '小子，雲山去過了嗎？在下年輕時也想去闖一闖，可惜山高路遠，終究沒去成。']],
   ]),
   ashui: () => talk(F().quest === 2 ? [['阿水', '謝謝你幫爺爺找回玉珮！爺爺好久沒這麼高興了。']] : [['阿水', '爺爺最近老是嘆氣……你去跟他說說話吧。']]),
   guard() {
@@ -386,6 +449,16 @@ function talk(items) {
   D.queue.push(...items);
   if (!D.open) { D.open = true; keys.clear(); $('dlg').classList.add('open'); step(); }
 }
+// 台詞的表情標記 → 說話者頭上自動冒的符號（ch01.js 的 emote）；平靜的表情（smile、serious、cold…）不冒，免得太吵
+const MOOD_EMOTE = { shock: '!', surprise: '!?', doubt: '?', tired: '💦', pain: '💦', worry: '💧', angry: '💢', glare: '💢', happy: '♪', laugh: '♪', grin: '♪', sad: '…', sigh: '…', think: '💭', shy: '💗' };
+function moodEmote(name, mood) {
+  const icon = MOOD_EMOTE[mood]; if (!icon || !name) return;
+  if (name === HERO_NAME) return emote('player', icon);
+  // 同名 NPC 可能有好幾個（不同場景），挑離玩家最近、畫面上看得到的那個
+  let best = null, bd = 500;
+  for (const n of npcs) { const d = Math.hypot(n.x - player.x, n.y - player.y); if (n.name === name && d < bd) { best = n; bd = d; } }
+  if (best) emote(best.id, icon);
+}
 function step() {
   if (!D.queue.length) { D.open = false; D.choices = null; $('dlg').classList.remove('open'); $('cg').classList.remove('on'); return; }
   const it = D.queue.shift();
@@ -395,6 +468,7 @@ function step() {
   else if (it && it.choices) { name = it.name; text = it.q; }
   $('dlgName').textContent = name; $('dlgName').style.display = name ? '' : 'none';
   setPortrait(name, text, mood);
+  moodEmote(name, mood);
   $('dlg').classList.toggle('narr', !name);
   D.full = text; D.shown = 0; D.choices = it && it.choices ? it.choices : null; D.sel = 0;
   $('dlgText').textContent = ''; $('dlgChoices').replaceChildren(); $('dlgMore').style.visibility = 'hidden';
@@ -722,6 +796,14 @@ function update(dt, t) {
   if ((G.id === 'field' || G.id === 'yunshan') && npcs.length !== shownNpcs().length) refreshNpcs();
   // NPC 閒逛
   for (const n of npcs) {
+    // n.follow：跟在玩家後面（數字是保持的距離）；落後太遠或卡住就直接補到玩家身後
+    if (n.follow && !isModal()) {
+      const dx = player.x - n.x, dy = player.y - n.y, dist = Math.hypot(dx, dy);
+      if (dist > 320) { n.x = player.x - (dx / dist) * n.follow; n.y = player.y - (dy / dist) * n.follow; }
+      else if (dist > n.follow) moveActor(n, dx, dy, Math.min(240, 150 + (dist - n.follow) * 2), dt);
+      else moveActor(n, 0, 0, 0, dt);
+      continue;
+    }
     if (!n.wander || isModal()) { if (!n.moving) n.frame = 0; continue; }
     if (n.target) {
       const dx = n.target[0] - n.x, dy = n.target[1] - n.y, dist = Math.hypot(dx, dy);
@@ -763,10 +845,53 @@ function fieldTriggers(moved) {
 }
 
 // ---------- 繪製 ----------
+const STOOL_IMG = Object.assign(new Image(), { src: 'assets/props/矮凳.png' });
 function drawActor(a) {
+  // 有待機圖的角色（CHAR_ART 的 idle）面朝下站著不動時播放待機動作；各人錯開時間，不會同步眨眼
+  const art = a !== player && CHAR_ART[a.art || a.id];
+  if (art && art.idle && art.idleSeq && !a.pose && !a.moving && a.dir === 0 && !a.sit && !a.lie && !a.lift && !a.jx) {
+    a.pose = { img: art.idle, fr: idleFrame(art.idleSeq, performance.now() + (a.x * 37 % 5000)) }; drawActor(a); a.pose = null; return;
+  }
   if (a.lift || a.jx) { const x0 = a.x, y0 = a.y; a.x += a.jx || 0; a.y -= a.lift || 0; a.lift0 = a.lift; a.lift = 0; const j = a.jx; a.jx = 0; drawActor(a); a.x = x0; a.y = y0; a.lift = a.lift0; a.jx = j; return; }
   const x = Math.round(a.x - cam.x), y = Math.round(a.y - cam.y), sz = Math.round(64 * a.scale), fw = cellOf(a.sheet, a.fw || CHAR_FW);
-  ctx.fillStyle = 'rgba(15,20,12,.38)'; ctx.beginPath(); ctx.ellipse(x, y, 12 * a.scale, 4.5 * a.scale, 0, 0, Math.PI * 2); ctx.fill();
+  if (!a.lie) { ctx.fillStyle = 'rgba(15,20,12,.38)'; ctx.beginPath(); ctx.ellipse(x, y, 12 * a.scale, 4.5 * a.scale, 0, 0, Math.PI * 2); ctx.fill(); }
+  // a.lie：躺著／坐著的整張圖，依世界座標 { x, y, w, h } 直接畫，不畫影子
+  // 可選：hide 整個不畫；sheet＋fr() 橫排多格動畫取第幾格；breathe 呼吸起伏（腳底不動）；nod 打瞌睡點頭
+  if (a.lie && a.lie.hide) return;
+  const lieImg = a.lie && (a.lie.sheet || a.lie.img);
+  if (lieImg && (lieImg.naturalWidth || lieImg.width)) {
+    const l = a.lie, now = performance.now();
+    let y = l.y, h = l.h;
+    if (l.breathe) { h = l.h * (1 + Math.sin(now / 900 + l.x) * 0.012); y = l.y + l.h - h; }
+    if (l.nod) y += Math.max(0, Math.sin(now / 1300)) ** 6 * 3;
+    ctx.imageSmoothingEnabled = true;
+    // 來源範圍：多格圖取第幾格，單張圖取整張
+    const src = l.sheet ? [l.sheet, (l.fr ? l.fr(now) : 0) * l.sheet.height, 0, l.sheet.height, l.sheet.height] : [l.img, 0, 0, l.img.naturalWidth || l.img.width, l.img.naturalHeight || l.img.height];
+    // l.fireShadow：附近有營火時，在地上投一道背向火堆、壓扁拉長的影子（跟著火光微微伸縮）
+    const fire = l.fireShadow && G.sprites && G.sprites.find((s) => s.campfire);
+    if (fire) {
+      const fx = l.x + l.w / 2, fy = l.y + l.h * 0.94, dx = fx - fire.x, dist = Math.hypot(dx, fy - fire.y);
+      if (dist < 320) {
+        const dir = Math.sign(dx) || 1, len = (0.75 + 0.35 * (1 - dist / 320)) * (1 + Math.sin(now / 110) * 0.03 + Math.sin(now / 47) * 0.02);
+        ctx.save(); ctx.translate(Math.round(fx - cam.x), Math.round(fy - cam.y));
+        // (x, y) → (x − dir·len·y, 0.28·y)：越高的部位影子落得越遠，整片貼在地上往外延伸
+        ctx.transform(1, 0, -dir * len, 0.28, 0, 0);
+        ctx.filter = 'brightness(0) blur(1.5px)'; ctx.globalAlpha = 0.42 * (1 - dist / 420); if (l.flip) ctx.scale(-1, 1);
+        ctx.drawImage(src[0], src[1], src[2], src[3], src[4], -l.w / 2, -l.h * 0.94, l.w, h);
+        ctx.restore();
+      }
+    }
+    // l.flip：左右翻轉（坐姿圖原本朝向的另一邊）
+    if (l.flip) { ctx.save(); ctx.translate(Math.round(l.x - cam.x) + l.w, Math.round(y - cam.y)); ctx.scale(-1, 1); ctx.drawImage(src[0], src[1], src[2], src[3], src[4], 0, 0, l.w, h); ctx.restore(); }
+    else ctx.drawImage(src[0], src[1], src[2], src[3], src[4], Math.round(l.x - cam.x), Math.round(y - cam.y), l.w, h);
+    if (l.after) l.after(now); // 附帶的小物件（如敷在額頭的濕布）
+    ctx.imageSmoothingEnabled = false; return;
+  }
+  // a.stool：坐在矮凳上，凳子先畫、人疊在上面
+  if (a.sit && a.stool && STOOL_IMG.complete) {
+    const s = Math.round(52 * a.scale / 1.35); ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(STOOL_IMG, x - s / 2, y - s * 0.72, s, s); ctx.imageSmoothingEnabled = false;
+  }
   smoothFor(a.sheet); // 點陣人物不做平滑縮放，避免糊掉（高解析度主角圖除外）
   // a.pose：單列動作圖的某一格（每格 86，腳底對齊行走圖）；flip 左右翻轉
   if (a.pose && a.pose.img) {
@@ -779,16 +904,36 @@ function drawActor(a) {
   else ctx.drawImage(a.sheet, a.frame * fw, a.dir * fw, fw, fw, Math.round(x - sz / 2), y - Math.round(FOOT * a.scale), sz, sz);
   ctx.imageSmoothingEnabled = false;
 }
+// 切換領頭（Q）：同行的秦無風走在最前面、小蝦米改當跟班；只換外觀，操作與判定仍在 player 身上
+let leadId = null;
+function leader() { return (leadId && npcs.find((n) => n.id === leadId && n.follow)) || null; }
+function toggleLeader() {
+  if (leader()) { leadId = null; toast('小蝦米領頭'); return; }
+  const q = npcs.find((n) => n.follow && (n.art || n.id) === 'qinwufeng');
+  if (!q) { toast('秦無風不在隊伍裡'); return; }
+  leadId = q.id; toast('秦無風領頭');
+}
+// 畫在玩家位置上的人：平常是小蝦米，切換後是領頭的秦無風
+function drawLead() { const l = leader(); l ? drawAs(l, player, () => drawActor(l)) : drawPlayer(); }
+// 用 who 的外觀、在 at 的位置姿勢畫出來（借 who 的欄位畫完再還原）
+function drawAs(who, at, draw) {
+  const K = ['x', 'y', 'dir', 'frame', 'moving'], keep = K.map((k) => who[k]);
+  for (const k of K) who[k] = at[k];
+  const fn = Math.floor(who.sheet.width / cellOf(who.sheet, who.fw || CHAR_FW)) || 8;
+  who.frame %= fn;
+  draw(); K.forEach((k, i) => { who[k] = keep[i]; });
+}
 // 採集時改用拔草動作圖（assets/characters/hero_gather.png），依進度播放 8 格
 function drawPlayer() {
   if (prone && proneImg) return drawProne(performance.now());
+  if (player.lie) return drawActor(player); // 整張姿勢圖（第 4 章趴床邊睡）
   // 單列動作圖（張望 hero_look、跌坐 hero_sit；ch01.js playPose）
   if (lookFr !== null && poseImg) { player.sheet = poseImg; player.frame = lookFr; player.dir = 0; return drawActor(player); }
   // 第 2 章躲在大樹後：停下來就蹲著（拔草圖的蹲姿格）
   if (gatherImg && ch02Hiding()) { const sh = player.sheet, fr = player.frame; player.sheet = gatherImg; player.frame = 2; drawActor(player); player.sheet = sh; player.frame = fr; return; }
-  // 穿現代裝、面朝下站著不動時，循環播放待機動作（hero_idle.png，單列 8 格）
+  // 穿現代裝、面朝下站著不動時播放待機動作（hero_idle.png，單列 8 格）：大多站定，偶爾眨眼、張望、抓頭
   if (heroIdleImg && modernLook() && !player.moving && !gathering && player.dir === 0) {
-    player.pose = { img: heroIdleImg, fr: Math.floor(performance.now() / 220) % 8 }; drawActor(player); player.pose = null; return;
+    player.pose = { img: heroIdleImg, fr: idleFrame(HERO_IDLE_SEQ, performance.now()) }; drawActor(player); player.pose = null; return;
   }
   player.sheet = player.moving && (keys.has('run') || player.scriptRun) && !modernLook() && heroRunImg ? heroRunImg : heroSheet();
   if (!gathering || !gatherImg) return drawActor(player);
@@ -853,10 +998,35 @@ function render(t) {
   list.sort((a, b) => a.y - b.y);
   for (const s of list) {
     if (s.mon) drawMonster(s, t);
-    else if (s === player) drawPlayer();
+    else if (s === player) drawLead();
+    else if (s === leader()) drawAs(player, s, drawPlayer);
     else if (s.sheet) drawActor(s);
     else {
-      ctx.drawImage(s.img, Math.round(s.x - s.ax - cam.x), Math.round(s.y - s.ay - cam.y + (s.bob ? Math.sin(t / 700) * 1.5 : 0)));
+      if (s.frames) s.img = s.frames[Math.floor(t / s.frameMs) % s.frames.length]; // 逐格動畫的道具（如營火）
+      if (s.screen) ctx.globalCompositeOperation = 'screen';
+      const sx = Math.round(s.x - s.ax - cam.x), sy = Math.round(s.y - s.ay - cam.y + (s.bob ? Math.sin(t / 700) * 1.5 : 0));
+      // s.w／s.h：高解析度素材在這裡才縮到顯示大小（畫布是 2 倍解析度，先縮小再放大會糊）
+      // s.shadow = [橫半徑, 縱半徑, 往上移]：柔邊的接地陰影，藏在物件底下、只透出一圈邊
+      // s.groundGlow = [橫半徑, 縱半徑, 'r,g,b', 強度]：火光照亮地面的暖色光暈，跟著火閃動
+      if (s.groundGlow) {
+        const [rx, ry, c, a = 0.35] = s.groundGlow, k = 1 + Math.sin(t / 110) * 0.05 + Math.sin(t / 47) * 0.03;
+        ctx.save(); ctx.translate(s.x - cam.x, s.y - cam.y); ctx.scale(1, ry / rx); ctx.globalCompositeOperation = 'lighter';
+        const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, rx * k);
+        gr.addColorStop(0, `rgba(${c},${a * k})`); gr.addColorStop(0.5, `rgba(${c},${a * 0.4 * k})`); gr.addColorStop(1, `rgba(${c},0)`);
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, rx * k, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+      if (s.shadow) {
+        const [rx, ry, dy = 0] = s.shadow, cx = s.x - cam.x, cy = s.y - cam.y - dy;
+        ctx.save(); ctx.translate(cx, cy); ctx.scale(1, ry / rx);
+        const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+        gr.addColorStop(0, 'rgba(10,6,4,.55)'); gr.addColorStop(0.7, 'rgba(10,6,4,.35)'); gr.addColorStop(1, 'rgba(10,6,4,0)');
+        ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, rx, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+      }
+      if (s.tone) ctx.filter = s.tone;
+      if (s.w) { ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(s.img, sx, sy, s.w, s.h); ctx.imageSmoothingEnabled = false; }
+      else ctx.drawImage(s.img, sx, sy);
+      ctx.filter = 'none';
+      ctx.globalCompositeOperation = 'source-over';
       if (s.fire) drawFire(s.x - cam.x + (s.fireOff ? s.fireOff[0] : 0), s.y - cam.y + (s.fireOff ? s.fireOff[1] : -14), t);
     }
   }
@@ -865,7 +1035,7 @@ function render(t) {
   drawGather();
   // 被樹木遮住的怪物與主角也透出半透明身影，避免看不見
   ctx.globalAlpha = 0.55; for (const m of monsters) if (!m.dead) { const st = m.stun; m.stun = 0; drawMonster(m, t); m.stun = st; }
-  if (!G.interior && !T.on) { ctx.globalAlpha = 0.4; drawPlayer(); } ctx.globalAlpha = 1;
+  if (!G.interior && !T.on) { ctx.globalAlpha = 0.4; drawLead(); } ctx.globalAlpha = 1;
   // 門口提示：按「上」進入
   const dn = !isModal() && doorNear();
   if (dn) {
@@ -897,7 +1067,7 @@ function render(t) {
     const lights = [...G.lights, { x: player.x, y: player.y - 30, r: G.cave && has('lighter') ? 140 : torchOn() ? 175 : 90 }];
     for (const L of lights) {
       const x = L.x - cam.x, y = L.y - cam.y; if (x < -L.r || x > VW + L.r || y < -L.r || y > VH + L.r) continue;
-      const fl = L.c ? 1 + Math.sin(t / 130 + L.x) * 0.04 : 1;
+      const fl = L.c ? 1 + Math.sin(t / 130 + L.x) * (L.flick || 0.04) : 1;
       const gr = lctx.createRadialGradient(x, y, 0, x, y, L.r * fl);
       gr.addColorStop(0, 'rgba(0,0,0,.85)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
       lctx.fillStyle = gr; lctx.fillRect(x - L.r, y - L.r, L.r * 2, L.r * 2);
@@ -905,10 +1075,12 @@ function render(t) {
     ctx.drawImage(LC, 0, 0);
     ctx.globalCompositeOperation = 'lighter';
     for (const L of G.lights) {
-      const x = L.x - cam.x, y = L.y - cam.y; if (x < -80 || x > VW + 80 || y < -80 || y > VH + 80) continue;
-      const gr = ctx.createRadialGradient(x, y, 0, x, y, 60);
-      gr.addColorStop(0, `rgba(${L.c},${dark * 0.55})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = gr; ctx.fillRect(x - 60, y - 60, 120, 120);
+      // 光源周圍的暖色光暈；L.glow 指定半徑，L.flick 讓亮度跟著火光跳動（兩個不同頻率疊起來比較不規則）
+      const R = L.glow || 60, x = L.x - cam.x, y = L.y - cam.y; if (x < -R || x > VW + R || y < -R || y > VH + R) continue;
+      const fa = L.flick ? 1 + (Math.sin(t / 110 + L.x) * 0.6 + Math.sin(t / 47 + L.y) * 0.4) * L.flick * 1.5 : 1;
+      const gr = ctx.createRadialGradient(x, y, 0, x, y, R);
+      gr.addColorStop(0, `rgba(${L.c},${dark * 0.55 * fa})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = gr; ctx.fillRect(x - R, y - R, R * 2, R * 2);
     }
     for (const f of fireflies) {
       const a = Math.min(1, f.life) * (0.5 + Math.sin(f.p * 4) * 0.5) * dark;
@@ -978,6 +1150,7 @@ window.addEventListener('keydown', (e) => {
   if (k === 'k' && !shopOpen && !menuOpen && !fading) { e.preventDefault(); openTree(); return; }
   if (k === 'v' && !e.repeat && !shopOpen && !menuOpen && !fading) { e.preventDefault(); toggleGov(); return; }
   if (T.on) { tacticsKey(k, e); return; }
+  if (k === 'q' && !e.repeat && !shopOpen && !menuOpen && !fading) { e.preventDefault(); toggleLeader(); return; }
   if (k === 'escape' || k === 'm') {
     e.preventDefault();
     if (shopOpen) closeShop(); else if (menuOpen) closeMenu(); else if (!fading) openMenu();
@@ -1006,11 +1179,11 @@ $('btnSave').onclick = () => started && toast(saveGame() ? '已存檔' : '無法
 $('btnMusic').onclick = () => Music.toggle();
 $('volume').oninput = (e) => Music.setVolume(Number(e.target.value));
 
-// ---------- 音樂：地圖播放 assets/music/village.mp3，戰鬥時改為五聲音階戰鬥曲 ----------
+// ---------- 音樂：地圖播放 assets/音樂/village.mp3，戰鬥時改為五聲音階戰鬥曲 ----------
 const PREF_KEY = 'qinghe_rpg_music';
 const Music = {
   ac: null, on: false, timer: null, step: 0, note: 2, vol: 1, fadeTimer: null,
-  bgm: Object.assign(new Audio('assets/music/village.mp3'), { loop: true, preload: 'auto', volume: 0 }),
+  bgm: Object.assign(new Audio('assets/音樂/village.mp3'), { loop: true, preload: 'auto', volume: 0 }),
   pref() { try { return localStorage.getItem(PREF_KEY) !== 'off'; } catch { return true; } },
   savePref() { try { localStorage.setItem(PREF_KEY, this.on ? 'on' : 'off'); } catch {} },
   label() { $('btnMusic').textContent = this.on ? '音樂：開' : '音樂：關'; },
@@ -1080,9 +1253,9 @@ const Music = {
   },
 };
 
-// 標題畫面音樂：assets/music/標題.mp3。瀏覽器不准自動播放時，等玩家第一次按鍵或點擊再開始
+// 標題畫面音樂：assets/音樂/標題.mp3。瀏覽器不准自動播放時，等玩家第一次按鍵或點擊再開始
 const TitleMusic = {
-  a: Object.assign(new Audio('assets/music/標題.mp3'), { loop: true, preload: 'auto', volume: 0 }),
+  a: Object.assign(new Audio('assets/音樂/標題.mp3'), { loop: true, preload: 'auto', volume: 0 }),
   want: false, timer: null,
   fade(to, ms, after) {
     clearInterval(this.timer);
@@ -1150,7 +1323,7 @@ function beginGame(load) {
   prone = proneImg ? { mode: 'sleep', t: 0 } : null;
   // 一按新遊戲就直接是辦公室 CG（不淡入，免得先閃出森林畫面），章名疊在 CG 上
   // 辦公室那段換成開場音樂（地圖音樂先停，開場結束時 bgmResume 再接回）
-  if (Music.on) { Music.fadeBgm(0, 200); SceneMusic.play('assets/music/辦公室.mp3'); }
+  if (Music.on) { Music.fadeBgm(0, 200); SceneMusic.play('assets/音樂/辦公室.mp3'); }
   const cg = $('cg'); cg.style.transition = 'none'; showCg('cg/第1章_辦公室_1.png'); void cg.offsetWidth; cg.style.transition = '';
   talk([`——　第 ${CHAPTERS.ch01.no} 章｜${CHAPTERS.ch01.title}　——`, () => dialogueItems('dlg_ch01_office')]);
 }
@@ -1168,7 +1341,7 @@ function loadImg(src) {
 async function boot() {
   try {
     const imgs = await Promise.all([...BUILDINGS.map((b) => loadImg(ASSET + b.img)), loadImg('assets/characters/hero_walk.png')]);
-    await Promise.all(['水井', '石燈籠', '小船', '村口牌樓', '寶箱', '路牌_西清河鎮', '路牌_南雲山官道', '山泉', '老樹_刻字', '倒木', '荊棘與倒木', '石階/長石階', '石階/石階平台', '石階/石燈籠'].map(async (n) => { PROPS[n] = await loadImg('assets/props/' + n + '.png'); }));
+    await Promise.all(['水井', '石燈籠', '小船', '村口牌樓', '寶箱', '路牌_西清河鎮', '路牌_南雲山官道', '山泉', '老樹_刻字', '倒木', '荊棘與倒木', '石階/長石階', '石階/石階平台', '石階/石燈籠', '石洞', '營火', '營火動畫', '營火餘燼'].map(async (n) => { PROPS[n] = await loadImg('assets/props/' + n + '.png'); }));
     await Promise.all(MINE_ART_NAMES.map(async (n) => { MINE_ART[n] = await loadImg('assets/mine/' + n + '.png'); }));
     await Promise.all(ROCK_NAMES.map(async (n) => { ROCK_ART[n] = await loadImg('assets/mine/rocks/' + n + '.png'); }));
     await Promise.all(Object.values(GATHER_KINDS).filter((k) => k.art).map(async (k) => { HERB_ART[k.art] = await loadImg('assets/props/herbs/' + k.art + '.png'); }));
@@ -1194,17 +1367,19 @@ async function boot() {
     heroSitImg = await loadImg('assets/characters/hero_sit.png').catch(() => null);
     heroDustImg = await loadImg('assets/characters/hero_dust.png').then(hd3).catch(() => null);
     heroPackImg = await loadImg('assets/characters/hero_pack.png').then(hd3).catch(() => null);
+    heroSweepImg = await loadImg('assets/characters/hero_sweep.png').then(hd3).catch(() => null);
     heroIdleImg = await loadImg('assets/characters/hero_idle.png').then(hd3).catch(() => null);
     heroMineImg = await loadImg('assets/characters/hero_mine.png').then(hd3).catch(() => null);
     // 載入正式角色素材；缺檔就略過
     await Promise.all(Object.entries(CHAR_ART).map(async ([id, a]) => {
       const dir = 'assets/' + (a.dir || 'characters') + '/';
       if (!a.walkOnly) a.face = await loadImg(dir + id + '_face.png').catch(() => null);
-      if (!a.faceOnly) a.walk = await loadImg(dir + id + '_walk.png').catch(() => null);
+      if (!a.faceOnly) a.walk = await loadImg(dir + id + '_walk.png').then((img) => (a.hd && (img.hd = a.hd), img)).catch(() => null);
+      if (a.idleSeq) a.idle = await loadImg(dir + id + '_idle.png').then(hd3).catch(() => null);
     }));
     await Promise.all(Object.entries(MON_ART).map(async ([id, a]) => {
-      a.walk = await loadImg(`assets/monsters/${id}_walk.png`).catch(() => null);
-      a.battle = await loadImg(`assets/monsters/${id}_battle.png`).catch(() => null);
+      a.walk = await loadImg(`assets/怪物/${id}_walk.png`).catch(() => null);
+      a.battle = await loadImg(`assets/怪物/${id}_battle.png`).catch(() => null);
     }));
     MAPS.village = G = buildWorld(imgs);
     $('loadingText').textContent = '繪製雲山官道……';
@@ -1216,7 +1391,7 @@ async function boot() {
     MAPS.forest = buildForest();
     MAPS.wildwood = buildWild();
     MAPS.mine = buildMine();
-    await Promise.all(Object.entries(BATTLE_BG_FILES).map(async ([id, n]) => { BATTLE_BG[id] = await loadImg('assets/battle/' + n + '.png').catch(() => null); }));
+    await Promise.all(Object.entries(BATTLE_BG_FILES).map(async ([id, n]) => { BATTLE_BG[id] = await loadImg('assets/戰鬥/' + n + '.png').catch(() => null); }));
     await Promise.all(Object.values(ROOMS).flatMap((r) => [r.bg, r.bgAlt]).filter(Boolean).map(async (bg) => { ROOM_BG[bg] = await loadImg('assets/interiors/' + bg + '.png').catch(() => null); }));
     Object.assign(MAPS, buildInteriors());
     $('loading').style.display = 'none';

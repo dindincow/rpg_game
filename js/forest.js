@@ -28,12 +28,15 @@ const FO_CHOP = [[420, 1250], [860, 1190], [880, 810], [1150, 1030], [1850, 650]
 // 山泉：水從東北的岩堆間流下，在窪地積成一汪小水潭（池心）
 const FO_POOL = { x: 960, y: 1330 }, FO_POOL_R = [84, 32];
 const inPool = (x, y) => ((x - FO_POOL.x) / FO_POOL_R[0]) ** 2 + ((y - FO_POOL.y) / FO_POOL_R[1]) ** 2 < 1;
-const FO_CLEARINGS = [[FO_POOL.x + 15, FO_POOL.y - 35, 200], [FO_WAKE.x, FO_WAKE.y, 170], [FO_WU.x, FO_WU.y + 10, 200], [FO_MINE.x, FO_MINE.y + 10, 180], [FO_SHADOW.x, FO_SHADOW.y, 120], [FO_AZ.x, FO_AZ.y, 80], [FO_LOG.x + 10, FO_LOG.y + 25, 100], [FO_STICK.x, FO_STICK.y, 70], [FO_THORNS.x, FO_THORNS.y - 60, 140], [FO_THORNS.x, FO_THORNS.y + 40, 120]];
+// 第 4 章避風石洞：水潭東南方的林間（洞口素材 assets/props/石洞.png 的腳點），從山泉岔路繞過水潭南邊走過去
+const FO_CAVE = { x: 1440, y: 1490 };
+const FO_CAVE_PATH = [[880, 1310], [915, 1405], [1080, 1435], [1260, 1480], [FO_CAVE.x, FO_CAVE.y + 30]];
+const FO_CLEARINGS = [[FO_CAVE.x, FO_CAVE.y + 40, 120], [FO_POOL.x + 15, FO_POOL.y - 35, 200], [FO_WAKE.x, FO_WAKE.y, 170], [FO_WU.x, FO_WU.y + 10, 200], [FO_MINE.x, FO_MINE.y + 10, 180], [FO_SHADOW.x, FO_SHADOW.y, 120], [FO_AZ.x, FO_AZ.y, 80], [FO_LOG.x + 10, FO_LOG.y + 25, 100], [FO_STICK.x, FO_STICK.y, 70], [FO_THORNS.x, FO_THORNS.y - 60, 140], [FO_THORNS.x, FO_THORNS.y + 40, 120]];
 
 function foRoad(px, py, jitter) {
   let edge = -1;
   for (let i = 1; i < FO_ROAD.length; i++) edge = Math.max(edge, 26 + jitter - segDist(px, py, FO_ROAD[i - 1][0], FO_ROAD[i - 1][1], FO_ROAD[i][0], FO_ROAD[i][1]));
-  for (const P of [FO_PATH, ...FO_BRANCHES]) for (let i = 1; i < P.length; i++) edge = Math.max(edge, 18 + jitter * 0.6 - segDist(px, py, P[i - 1][0], P[i - 1][1], P[i][0], P[i][1]));
+  for (const P of [FO_PATH, ...FO_BRANCHES, FO_CAVE_PATH]) for (let i = 1; i < P.length; i++) edge = Math.max(edge, 18 + jitter * 0.6 - segDist(px, py, P[i - 1][0], P[i - 1][1], P[i][0], P[i][1]));
   return [edge > 0 ? 1 : 0, edge];
 }
 function foClearing(px, py) {
@@ -108,13 +111,22 @@ function buildForest() {
     gctx.fillRect(x | 0, y | 0, 2, i % 6 === 0 ? 2 : 4); gctx.fillRect((x | 0) + 3, (y | 0) + 1, 2, 3);
   }
   drawSpring(gctx, G, addSprite, R);
+  // 避風石洞：洞口圖 1254×1254 縮成 200×200，腳點對準洞口前的土路；整座岩堆擋住，不能走進洞裡
+  const cv = PROPS.石洞;
+  if (cv) {
+    const { x: cx, y: cy } = FO_CAVE, [c, cg] = canvas(200, 200);
+    cg.imageSmoothingQuality = 'high'; cg.drawImage(cv, 0, 0, 200, 200);
+    shadow(cx, cy - 6, 96, 18, 0.3); addSprite({ img: c, ax: 102, ay: 190 }, cx, cy);
+    G.solids.push([cx - 95, cy - 150, cx + 95, cy - 40]);
+    G.circles.push([cx - 70, cy - 25, 30], [cx + 70, cy - 25, 30]);
+  }
   drawTracks(gctx, R);
   drawClues(G, gctx, addSprite, R);
   // 密林：比官道更密、更暗
   const trees = [];
   // 要看得見的地面：林道、礦坑小徑、第 4 章舊獵道通往空地的側道（每 30px 取一點）
   const seen = [];
-  for (const line of [FO_ROAD, FO_PATH, ...FO_BRANCHES, FO_HUNT_TRAIL]) for (let i = 1; i < line.length; i++) {
+  for (const line of [FO_ROAD, FO_PATH, ...FO_BRANCHES, FO_CAVE_PATH, FO_HUNT_TRAIL]) for (let i = 1; i < line.length; i++) {
     const [x0, y0] = line[i - 1], [x1, y1] = line[i], n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 30);
     for (let k = 0; k <= n; k++) seen.push([x0 + (x1 - x0) * k / n, y0 + (y1 - y0) * k / n]);
   }

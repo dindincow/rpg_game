@@ -2,7 +2,7 @@
 // 回合制戰鬥：依速度排序行動，指令有攻擊、仙術、道具、防禦、逃跑
 const B = { on: false, enemies: [], fx: [], nums: [], anims: [], bg: null, menu: null, opts: {}, intro: 0, shake: 0, bossTurns: 0,
   hero: { x: 740, y: 368, ox: 0, oy: 0, flash: 0, frame: 0, guard: false, alpha: 1 } };
-// 各地圖的戰鬥背景圖（assets/battle/<名稱>.png），boot() 載入
+// 各地圖的戰鬥背景圖（assets/戰鬥/<名稱>.png），boot() 載入
 const BATTLE_BG_FILES = { field: '雲山官道', forest: '雲山官道', village: '雲山官道' }, BATTLE_BG = {};
 
 // ---------- 敵人造型（像素塊組合） ----------
@@ -103,7 +103,7 @@ function burstFx(x, y, color, n = 14) {
 function startBattle(group, opts = {}) {
   keys.clear(); B.on = true; B.opts = opts; B.fx = []; B.nums = []; B.anims = []; B.menu = null; B.intro = 0; B.bossTurns = 0;
   Object.assign(B.hero, { ox: 0, oy: 0, flash: 0, guard: false, alpha: 1 });
-  // 戰鬥背景：該地圖有專屬底圖（assets/battle/）就用底圖，否則以目前畫面模糊代替
+  // 戰鬥背景：該地圖有專屬底圖（assets/戰鬥/）就用底圖，否則以目前畫面模糊代替
   const [bg, g] = canvas(VW, VH), art = BATTLE_BG[G.id];
   g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
   if (art) g.drawImage(art, 0, 0, VW, VH);

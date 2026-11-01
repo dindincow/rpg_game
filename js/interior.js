@@ -201,7 +201,9 @@ function buildBgRoom(def) {
   const img = ROOM_BG[def.bg];
   if (!img) throw new Error('缺少室內底圖：assets/interiors/' + def.bg + '.png');
   const f = def.w / img.width, w = def.w, h = Math.round(img.height * f), sc = (v) => Math.round(v * f);
-  const [c, g] = canvas(w, h); g.imageSmoothingQuality = 'high'; g.drawImage(img, 0, 0, w, h);
+  const [c, g] = canvas(w, h); if (def.pixel) g.imageSmoothingEnabled = false; else g.imageSmoothingQuality = 'high'; g.drawImage(img, 0, 0, w, h);
+  // dim：整張底圖疊一層深藍夜色壓暗（山洞原圖太亮、沒有夜裡的氣氛），火光和月光照到的地方再由 lights 提亮
+  if (def.dim) { g.fillStyle = `rgba(8,10,26,${def.dim})`; g.fillRect(0, 0, w, h); }
   const R = { id: 'in_' + def.id, name: def.name, W: w, H: h, f, interior: true, outside: def.id, door: sc(def.door), ground: c, groundBase: c, sprites: [], solids: [], circles: [], lights: [], shimmers: [], buildings: [], water: () => false };
   // 另一張同構圖的底圖（如修繕後的王宅），進房時依 altFlag 切換
   const alt = def.bgAlt && ROOM_BG[def.bgAlt];
@@ -209,6 +211,31 @@ function buildBgRoom(def) {
   for (const s of def.solids) R.solids.push(s.map(sc));
   for (const [x, y, r = 150] of def.lights) R.lights.push({ x: sc(x), y: sc(y), r, c: '255,170,100' });
   for (const n of ROOM_NPC_DEFS[def.id] || []) { n.x = sc(n.x); n.y = sc(n.y); }
+  // 火堆：營火素材（assets/props/營火.png，1254×1254 縮成 140×140）；缺圖就用石頭圍木柴＋drawFire 跳動火焰；附一盞暖光
+  for (const [x, y] of def.fires || []) {
+    const img = PROPS.營火, anim = PROPS.營火動畫;
+    if (anim) {
+      // 營火動畫（assets/props/營火動畫.png）：8 格橫排、每格 300×300、透明背景，石圈底部已對齊在每格 (150, 288)
+      // 每格保留原解析度，繪製時才縮成 S×S（先縮小會在 2 倍畫布上變糊）
+      const N = 8, cw = anim.width / N, S = 100;
+      const cut = (sheet) => Array.from({ length: N }, (_, k) => { const [c, g] = canvas(cw, sheet.height); g.drawImage(sheet, k * cw, 0, cw, sheet.height, 0, 0, cw, sheet.height); return c; });
+      const frames = cut(anim), embers = PROPS.營火餘燼 ? cut(PROPS.營火餘燼) : null; // 營火餘燼.png：火快熄、冒煙（劇情用 campfireEmbers 切換）
+      // shadow：石圈底下的接地陰影；tone：石頭壓暗、偏暖，跟夜裡的場景融在一起
+      R.sprites.push({ campfire: true, embers, img: frames[0], frames, frameMs: 160, w: S, h: S, x: sc(x), y: sc(y) + 15, ax: S / 2, ay: S * 288 / 300, shadow: [S * 0.5, S * 0.17, S * 0.13], groundGlow: [S * 1.3, S * 0.5, '255,130,50', 0.32], tone: 'sepia(.3) brightness(.86)' });
+    } else if (img) {
+      const [c, g] = canvas(140, 140); g.imageSmoothingQuality = 'high'; g.drawImage(img, 0, 0, 140, 140);
+      R.sprites.push({ img: c, x: sc(x), y: sc(y), ax: 70, ay: 106 });
+    } else {
+      const [c, g] = canvas(44, 22);
+      g.fillStyle = '#00000050'; g.beginPath(); g.ellipse(22, 14, 21, 7, 0, 0, Math.PI * 2); g.fill();
+      for (const [sx, sy] of [[3, 10], [10, 15], [20, 17], [30, 15], [38, 10], [33, 5], [11, 5]]) { g.fillStyle = '#6a6460'; g.fillRect(sx, sy, 6, 5); g.fillStyle = '#8a8480'; g.fillRect(sx, sy, 6, 2); }
+      g.fillStyle = '#4a2e16'; g.fillRect(9, 9, 26, 4); g.fillStyle = '#5e3a1e'; g.fillRect(13, 6, 18, 4);
+      R.sprites.push({ img: c, x: sc(x), y: sc(y), ax: 22, ay: 16, fire: true, fireOff: [0, -6] });
+    }
+    R.solids.push([sc(x) - 28, sc(y) - 16, sc(x) + 28, sc(y) + 6]);
+    // glow：地面暖光的半徑；flick：火光明暗跳動的幅度
+    R.lights.push({ campfire: true, x: sc(x), y: sc(y) - 5, r: 260, c: '255,140,60', glow: 120, flick: 0.1 });
+  }
   return R;
 }
 function buildRoom(def) {
@@ -307,18 +334,25 @@ const ROOMS = {
     solids: [[0, 0, 1672, 318], [686, 245, 990, 444], [1274, 180, 1478, 346], [0, 0, 180, 941], [176, 346, 253, 542], [180, 228, 245, 346], [139, 588, 216, 748],
       [1494, 0, 1672, 941], [1417, 362, 1489, 519], [1429, 588, 1551, 748], [0, 718, 764, 941], [908, 718, 1672, 941]],
     lights: [[369, 98], [1301, 98], [759, 269, 110], [911, 269, 110], [629, 727, 120], [1045, 727, 120], [1466, 596, 100], [526, 209, 90], [1143, 209, 90]] },
+  // 第 4 章溪谷避風石洞，底圖原尺寸 1536×1024（跟王宅同等畫質，一樣縮成寬 1000）：中間一片土地，正下方是洞口小路，
+  // 左邊靠牆有木箱、竹簍、陶罐和乾草鋪，右邊靠牆有木箱和布包；劇情中不能出洞（door 放在畫面外）
+  cave: { name: '溪谷石洞', bg: '石洞', w: 1000, dim: 0.5, door: -9999, fires: [[780, 500]],
+    solids: [[0, 0, 1536, 250], [0, 0, 220, 1024], [1360, 0, 1536, 1024], [0, 545, 650, 1024], [910, 650, 1536, 1024], [1300, 560, 1536, 1024],
+      [450, 140, 620, 300], [1050, 200, 1200, 345], [200, 260, 360, 440], [1180, 300, 1370, 440], [0, 1010, 1536, 1024]],
+    lights: [[775, 900, 140]] },
 };
 const ROOM_NPC_DEFS = {
   home: [{ id: 'mother', name: '吳嬸', x: 600, y: 455, dir: 0, filter: 'hue-rotate(250deg) saturate(.5) brightness(1.1)', scale: 1.3, wander: 40, speed: 22 }],
   inn: [
-    { id: 'innkeeper', name: '店小二', x: 1250, y: 482, dir: 0, filter: 'saturate(.4) brightness(1.05)', scale: 1.3, r: 110 },
+    { id: 'innkeeper', name: '店小二', x: 1250, y: 482, dir: 0, scale: 1.3, r: 110 },
     { id: 'merchant', name: '旅商', x: 525, y: 520, dir: 2, filter: 'sepia(.6) hue-rotate(20deg) brightness(.95)', scale: 1.3 },
-    { id: 'storyteller', name: '說書先生', x: 840, y: 765, dir: 0, filter: 'grayscale(.7) brightness(1.1)', scale: 1.3 },
+    { id: 'storyteller', name: '說書先生', x: 840, y: 765, dir: 0, scale: 1.3 },
   ],
   weapon: [{ id: 'smith', name: '韓鐵山', x: 1150, y: 620, dir: 0, filter: 'sepia(.4) brightness(.8) contrast(1.2)', scale: 1.4, r: 110 }],
   armor: [{ id: 'armorer', name: '錦娘', x: 490, y: 218, dir: 0, filter: 'hue-rotate(150deg) saturate(.6) brightness(1.1)', scale: 1.3, r: 110 }],
   river: [],
   shrine: [],
+  cave: [],
 };
 function buildInteriors() {
   const out = {};

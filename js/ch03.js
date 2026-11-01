@@ -84,8 +84,8 @@ Object.assign(DIALOGUES, {
 
   // ---------- S06 清理門前（三處）----------
   dlg_ch03_c_rubble: { lines: [
-    { effects: [{ type: 'hook', name: 'sfx2', sound: 'sweep' }] },
-    '（你蹲下來，把碎瓦一片片撿進竹畚箕。左肩一用力就發麻，只好換右手。）',
+    { effects: [{ type: 'hook', name: 'sfx2', sound: 'sweep' }, { type: 'hook', name: 'sweep' }] },
+    '（你借來竹掃帚，把碎瓦掃成一堆，再一片片撿進竹畚箕。左肩一用力就發麻，只好換右手。）',
     { effects: [{ type: 'hook', name: 'ch03Count', group: 'clear', key: 'ch03_c_rubble' }] },
   ] },
   dlg_ch03_c_basket: { lines: [
@@ -200,7 +200,7 @@ Object.assign(DIALOGUES, {
     ['沈若蘭', '水床？'],
     [HERO_NAME, '……就是會滴水的床。', 'tired'],
     '（沈若蘭無奈，示意你坐在門邊的矮凳上。）',
-    { effects: [{ type: 'hook', name: 'sit', who: 'player', on: true }] },
+    { effects: [{ type: 'hook', name: 'sit', who: 'player', on: true, stool: true }] },
     { cg: 'cg/第3章_換藥.png' },
     { effects: [{ type: 'hook', name: 'sfx2', sound: 'cloth', times: 2, gap: 260 }] },
     '（她解開你左肩外側的衣料，查看青紫色的瘀傷。你一碰到痛處便縮了縮。）',
@@ -275,13 +275,13 @@ Object.assign(DIALOGUES, {
       { id: 'right', label: '墊高入口、壓低出口', if: { allFlags: ['ch03_drain_try'] }, effects: [{ type: 'hook', name: 'drainTest', ok: true }], lines: [
         '（你咬牙把竹管墊高，重新試了一次。）',
         { effects: [{ type: 'hook', name: 'pause', ms: 1700 }] },
-        '（這回一瓢水順著竹管流出院牆外的小溝。）',
+        '（這回一瓢水順著竹管滑進新挖的泥溝，一路往南，從河岸那個舊石溝口流進河裡。）',
         [HERO_NAME, '成功了！', 'happy'],
         '（你高舉雙手，左肩立刻一抽。）',
         { effects: [{ type: 'hook', name: 'emote', who: 'player', icon: '💦' }] },
         [HERO_NAME, '痛痛痛……成功也不能舉手是不是！', 'shock'],
         '（老吳搖頭，一邊笑一邊幫你把竹管固定。）',
-        { effects: [{ type: 'set_flag', key: 'ch03_drain' }, { type: 'log', text: '排水溝接上院外的舊溝，沒有直接沖向村道', toast: true }] },
+        { effects: [{ type: 'set_flag', key: 'ch03_drain' }, { type: 'log', text: '排水溝接上河岸的舊溝口，雨水流進河裡，沒有沖向村道', toast: true }] },
         '【提示】接下來修大門、換掉屋裡的爛床腳。',
       ] },
     ] } },
@@ -380,7 +380,7 @@ Object.assign(DIALOGUES, {
     { walk: [{ who: 'chief_w', x: CH03.drain.x - 50, y: CH03.drain.y - 6 }] },
     '（陳伯安走到排水溝旁，用木杖點了點新挖的土。）',
     ['陳伯安', '這條溝，通向哪裡？'],
-    [HERO_NAME, '院外的舊溝，沒有直接沖向村道。我先清出一段，雨大時還得看看有沒有堵住。'],
+    [HERO_NAME, '往南接到河邊的舊溝口，水直接進河，沒有沖向村道。我把溝清通了，雨大時還得看看有沒有堵住。'],
     ['陳伯安', '你考慮過後續？'],
     [HERO_NAME, '不然下次又淹回來，我不是白挖了嗎？'],
     '（村長的神色略微緩和。他卻沒有立刻說出「你可以長住」這類話。）',
@@ -511,7 +511,7 @@ Object.assign(DIALOGUES, {
     '（黑松林深處，一場追逐正悄悄逼近清河村。）',
     '【第03章 完】',
     // 章節完成：天亮（暫住之約第 2 日）→ 第 4 章 → 自動存檔
-    { effects: [{ type: 'hook', name: 'dawn' }, { type: 'set_flag', key: 'ch03_complete' }, { type: 'chapter', id: 'ch04' }, { type: 'hook', name: 'autosave' }] },
+    { effects: [{ type: 'set_flag', key: 'ch03_complete' }, { type: 'chapter', id: 'ch04' }, { type: 'hook', name: 'dawn', save: true }] },
   ] },
 });
 
@@ -558,12 +558,12 @@ STORY_NPCS.push(
   { id: 'ruolan_t', map: 'village', name: '沈若蘭', art: 'shenruolan', x: CH03.road.x, y: CH03.road.y, dir: 3, scale: 1.35,
     show: { allFlags: ['ch03_tools'], notFlags: ['ch03_treated'] }, talk: [] },
   // 村長：匾額掛好、屋頂補好後從路口走來
-  { id: 'chief_w', map: 'village', name: '陳伯安', art: 'chief', filter: 'grayscale(.8) sepia(.35) brightness(1.15)', x: CH03.road.x, y: CH03.road.y, dir: 3, scale: 1.3,
+  { id: 'chief_w', map: 'village', name: '陳伯安', art: 'chief', x: CH03.road.x, y: CH03.road.y, dir: 3, scale: 1.3,
     show: { allFlags: ['ch03_sign', 'wang_house_repaired'], notFlags: ['ch03_chief_done'] }, talk: [] },
   // 小蓮祖孫：來訪期間，公倉那邊的祖孫先隱藏
-  { id: 'xiaolian_w', map: 'village', name: '小蓮', art: 'kid', filter: 'hue-rotate(280deg) saturate(1.2) brightness(1.1)', x: CH03.road.x - 30, y: CH03.road.y + 10, dir: 3, scale: 1.05,
+  { id: 'xiaolian_w', map: 'village', name: '小蓮', art: 'xiaolian', x: CH03.road.x - 30, y: CH03.road.y + 10, dir: 3, scale: 1.05,
     show: { allFlags: ['ch03_xl_visit'] }, talk: [] },
-  { id: 'grandma_w', map: 'village', name: '小蓮的奶奶', art: 'liushen', filter: 'grayscale(.6) brightness(1.05)', x: CH03.road.x - 70, y: CH03.road.y, dir: 3, scale: 1.2,
+  { id: 'grandma_w', map: 'village', name: '小蓮的奶奶', art: 'grandma', x: CH03.road.x - 70, y: CH03.road.y, dir: 3, scale: 1.2,
     show: { allFlags: ['ch03_xl_visit'] }, talk: [] },
 );
 
@@ -620,7 +620,7 @@ Object.assign(STORY_HOOKS, {
   ch03Hour: (e) => { S.time = Math.max(S.time, e.h * 60); },
   // 竹管倒水：ok 流出院外；否則流到一半倒流回入口
   drainTest: (e) => {
-    const d = CH03.drain, ix = d.x - 46, iy = d.y - 12, ox = d.x + 44, oy = d.y + 2;
+    const { ix, iy, ox, oy } = ch03PipeEnds();
     Sfx.water();
     worldFx.push({ t: 0, dur: 1.6, draw(p) {
       for (let i = 0; i < 7; i++) {
@@ -695,6 +695,17 @@ function ch03Logs(x, y, rotten) {
 function ch03Tiles(x, y) {
   for (let i = 0; i < 5; i++) { ctx.fillStyle = i % 2 ? '#5b5f63' : '#6b7074'; ctx.fillRect(x - 12, y - i * 3, 24, 3); }
 }
+// 排水溝素材（assets/decals/）：竹管入口墊石頭在左上、出口在右下；泥溝直向可上下接續；溝口連著一小段河水
+const DRAIN_IMG = {
+  pipe: Object.assign(new Image(), { src: 'assets/decals/竹管.png' }),
+  ditch: Object.assign(new Image(), { src: 'assets/decals/排水溝.png' }),
+  mouth: Object.assign(new Image(), { src: 'assets/decals/溝口.png' }),
+};
+// 竹管兩端的世界座標（依竹管圖的斜度：入口高、出口低）
+function ch03PipeEnds() {
+  const d = CH03.drain, ix = d.x - 46, iy = d.y - 12;
+  return { ix, iy, ox: ix + 95, oy: iy + 48 };
+}
 function drawCh03Decals() {
   const f = F();
   if (G.id === 'in_river' && f.ch03_flowers) {
@@ -709,21 +720,26 @@ function drawCh03Decals() {
   const at = (p) => [p.x - cam.x, p.y - cam.y];
   // 泥溝 → 排水溝與竹管
   const d = CH03.drain, [dx, dy] = at(d);
-  ctx.fillStyle = f.ch03_drain ? 'rgba(60,45,30,.55)' : 'rgba(95,70,45,.4)';
-  ctx.beginPath(); ctx.moveTo(dx - 120, dy - 52); ctx.quadraticCurveTo(dx - 70, dy - 20, dx - 46, dy - 12); ctx.lineTo(dx - 46, dy - 4); ctx.quadraticCurveTo(dx - 78, dy - 12, dx - 126, dy - 46); ctx.fill();
-  if (f.ch03_drain) {
-    ctx.fillStyle = 'rgba(60,45,30,.55)'; ctx.fillRect(dx + 44, dy, 50, 7);
-    ctx.fillStyle = 'rgba(150,195,225,.35)'; ctx.fillRect(dx + 46, dy + 2, 46, 3);
+  // 挖溝前：屋簷雨水沖出的淺泥痕；挖好後由泥溝素材取代
+  if (!f.ch03_drain) {
+    ctx.fillStyle = 'rgba(95,70,45,.4)';
+    ctx.beginPath(); ctx.moveTo(dx - 120, dy - 52); ctx.quadraticCurveTo(dx - 70, dy - 20, dx - 46, dy - 12); ctx.lineTo(dx - 46, dy - 4); ctx.quadraticCurveTo(dx - 78, dy - 12, dx - 126, dy - 46); ctx.fill();
   }
-  if (f.ch03_treated) {
-    const ix = dx - 46, iy = dy - (f.ch03_drain ? 12 : 6), ox = dx + 44, oy = dy + (f.ch03_drain ? 2 : -6);
-    ctx.strokeStyle = '#8a9a5a'; ctx.lineWidth = 6; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(ix, iy); ctx.lineTo(ox, oy); ctx.stroke();
-    ctx.strokeStyle = '#6a7a40'; ctx.lineWidth = 1;
-    for (let k = 0.25; k < 1; k += 0.25) { const x = ix + (ox - ix) * k, y = iy + (oy - iy) * k; ctx.beginPath(); ctx.moveTo(x, y - 3); ctx.lineTo(x, y + 3); ctx.stroke(); }
-    ctx.lineCap = 'butt';
-    if (f.ch03_drain) { ctx.fillStyle = '#5a4a3a'; ctx.fillRect(ix - 5, iy + 2, 10, 6); }
+  // 院外舊溝的溝口一直都在河岸；挖好排水溝後，溝從竹管出口一路接到溝口
+  // 溝口圖 1254×1254 縮成 MS：圖裡自帶一段斜溝從右上通到石框，在圖高 0.32 處溝的中線約在圖寬 0.62，泥溝就接在這裡
+  const p = ch03PipeEnds(), edge = riverY(p.ox) - RIVER_HW, MS = 150, my = edge - MS * 0.75, end = my + MS * 0.32;
+  ctx.imageSmoothingEnabled = true;
+  if (DRAIN_IMG.mouth.complete) ctx.drawImage(DRAIN_IMG.mouth, p.ox - MS * 0.62 - cam.x, my - cam.y, MS, MS);
+  if (f.ch03_drain && DRAIN_IMG.ditch.complete) {
+    // 泥溝圖 1448×1086，溝的中線約在圖寬 0.515；一段段往下接到溝口石框
+    const sw = 1448, sh = 1086, k = 0.13, h = sh * k;
+    for (let y = p.oy - 6; y < end; y += h) {
+      const seg = Math.min(h, end - y);
+      ctx.drawImage(DRAIN_IMG.ditch, 0, 0, sw, seg / k, p.ox - sw * k * 0.515 - cam.x, y - cam.y, sw * k, seg);
+    }
   }
+  if (f.ch03_treated && DRAIN_IMG.pipe.complete) ctx.drawImage(DRAIN_IMG.pipe, p.ix - 8 - cam.x, p.iy - 18 - cam.y, 109, 81);
+  ctx.imageSmoothingEnabled = false;
   // 清理前的碎瓦、破筐、雜草
   if (!f.ch03_c_rubble) ch03Rubble(...at(CH03.rubble));
   if (!f.ch03_c_basket) ch03Basket(...at(CH03.basket));

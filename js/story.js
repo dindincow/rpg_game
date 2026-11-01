@@ -296,7 +296,8 @@ Object.assign(STORY_HOOKS, {
   learnHerbal: () => { if (!S.specs.herbal) { learnSpec('gather', 'herbal'); toast('習得「採藥」'); } },
   // 守夜：時間跳到深夜；天亮：換日並恢復
   night: () => fade(() => { S.time = Math.max(S.time, 23 * 60); }, 800),
-  dawn: () => fade(() => { S.time = 6 * 60; S.day++; healAll(); villageDaily(); }, 1200),
+  // save：等畫面變黑、時間真的換到早上之後才自動存檔（不然會存到天亮前的半夜）
+  dawn: (e) => fade(() => { S.time = 6 * 60; S.day++; healAll(); villageDaily(); if (e && e.save) STORY_HOOKS.autosave(); }, 1200),
   learnLogging: () => { if (!S.specs.logging) learnSpec('gather', 'logging'); if (!has('axe')) give('axe'); toast('獲得「柴刀」 · 習得「伐木」'); },
   repairWang: () => fade(() => { passTime(360); F().wang_house_repaired = 1; applyWang(MAPS.village); }, 1200),
   rest: () => sleep(),
@@ -368,7 +369,9 @@ function updateScripted(dt) {
     const k = Math.min(1, sp * dt / d);
     a.dir = Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 2 : 3) : (dy < 0 ? 1 : 0);
     a.x += dx * k; a.y += dy * k; a.moving = true; a.target = null; a.wait = 9;
-    a.anim = (a.anim || 0) + dt * (sp / 15); a.frame = Math.floor(a.anim) % (a.frames || 8);
+    a.anim = (a.anim || 0) + dt * (sp / 15);
+    const seq = a.sheet && a.sheet.walkSeq && a.sheet.walkSeq[a.dir];
+    a.frame = seq ? seq[Math.floor(a.anim * (a.sheet.walkRate || 1) * seq.length / 8) % seq.length] : Math.floor(a.anim) % (a.frames || 8);
     if (a === player) player.scriptRun = !!w.run;
   }
   if (!busy) { scripted = null; player.scriptRun = false; D.hold = false; $('dlg').classList.add('open'); step(); }

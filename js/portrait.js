@@ -117,12 +117,35 @@ function portraitFor(name) {
 // 小蝦米只在穿現代裝時用（assets/characters/hero_faces_modern.png）
 let heroFacesModern = null;
 const FACE_SETS = {
-  [HERO_NAME]: { img: () => modernLook() && heroFacesModern, moods: { smile: 0, grin: 1, laugh: 2, surprise: 3, worry: 4, shy: 5, angry: 6, doubt: 7, tired: 8, shock: 9, sigh: 10, wink: 11 } },
-  秦無風: { file: 'assets/characters/qinwufeng_faces.png', moods: { smile: 10, smirk: 1, serious: 2, cold: 0, glare: 3, angry: 4, surprise: 5, doubt: 6, pain: 7, hurt: 8, shy: 9, annoyed: 11 } },
-  顧文淵: { file: 'assets/characters/guwenyuan_faces.png', moods: { calm: 0, smile: 1, happy: 2, think: 3, serious: 4, annoyed: 5, surprise: 6, worry: 7, shy: 8, flustered: 9, doubt: 10, sigh: 11 } },
+  // 古風版表情包：0 微笑、1 咧嘴笑、2 大笑、3 驚訝、4 不悅瞪眼、5 低頭沮喪、6 臉紅、7 托腮思考、8 疑惑（問號）、9 嘆氣、10 受傷咬牙、11 自信壞笑
+  [HERO_NAME]: { img: () => modernLook() && heroFacesModern, moods: { smile: 0, grin: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, serious: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, smirk: 11, wink: 11 } },
+  // 秦無風（v2）：標準 12 格；0 是他平時冷淡的神情，所以 cold/calm 用 0
+  秦無風: { file: 'assets/characters/qinwufeng_faces.png', moods: { cold: 0, calm: 0, smile: 1, smirk: 1, grin: 1, happy: 2, laugh: 2, surprise: 3, shock: 3, angry: 4, annoyed: 4, glare: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 } },
+  // 顧文淵（v2 淡色版）：標準 12 格；他的招牌是瞇眼的狐狸笑，所以 smile 也用 1（似笑非笑）
+  顧文淵: { file: 'assets/characters/guwenyuan_faces.png', moods: { calm: 0, smile: 1, smirk: 1, grin: 1, happy: 2, laugh: 2, surprise: 3, shock: 3, angry: 4, annoyed: 4, worry: 5, sad: 5, shy: 6, flustered: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 } },
+  // 老吳：0 爽朗淺笑、1 咧嘴笑、2 大笑、3 驚訝、4 生氣、5 擔憂、6 難為情、7 摸鬍沉思、8 疑惑、9 嘆氣、10 吃痛、11 嚴肅
+  老吳: { file: 'assets/characters/woodcutter_faces.png', moods: { smile: 0, grin: 1, happy: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 } },
+  // 以下同老吳的排法：0 淺笑、1 咧嘴笑、2 大笑、3 驚訝、4 生氣、5 擔憂、6 難為情、7 托腮沉思、8 疑惑、9 嘆氣、10 吃痛、11 嚴肅
+  // 村長 0 是板著臉，所以 serious 也用 0；小蓮 9 是揉眼睛哭、11 是嘟嘴
+  陳伯安: { file: 'assets/characters/chief_faces.png', moods: { ...{ smile: 0, grin: 1, happy: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 }, serious: 0, calm: 0, smile: 1 } },
+  韓鐵山: { file: 'assets/characters/smith_faces.png', moods: { smile: 0, grin: 1, happy: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 } },
+  老周: { file: 'assets/characters/laozhou_faces.png', moods: { smile: 0, grin: 1, happy: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 } },
+  小蓮的奶奶: { file: 'assets/characters/grandma_faces.png', moods: { smile: 0, grin: 1, happy: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 } },
+  王嬸: { file: 'assets/characters/farmer_faces.png', moods: { smile: 0, grin: 1, happy: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 } },
+  小豆: { file: 'assets/characters/kid_faces.png', moods: { smile: 0, grin: 1, happy: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 } },
+  吳嬸: { file: 'assets/characters/mother_faces.png', moods: { smile: 0, grin: 1, happy: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 } },
+  阿武: { file: 'assets/characters/guard_faces.png', moods: { smile: 0, grin: 1, happy: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 } },
+  張叔: { file: 'assets/characters/fisher_faces.png', moods: { smile: 0, grin: 1, happy: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 } },
+  店小二: { file: 'assets/characters/innkeeper_faces.png', moods: { smile: 0, grin: 1, happy: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 } },
+  說書先生: { file: 'assets/characters/storyteller_faces.png', moods: { smile: 0, grin: 1, happy: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 } },
+  孫員外: { file: 'assets/characters/yuanwai_faces.png', moods: { smile: 0, grin: 1, happy: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 } },
+  // 蒙面人：臉被蒙住，表情靠眉眼；平時冷眼，所以 smile 也用 0
+  蒙面人: { file: 'assets/characters/masked_faces.png', moods: { smile: 0, cold: 0, smirk: 1, grin: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, worry: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 } },
+  小蓮: { file: 'assets/characters/xiaolian_faces.png', moods: { ...{ smile: 0, grin: 1, happy: 1, laugh: 2, surprise: 3, shock: 3, angry: 4, worry: 5, sad: 5, shy: 6, think: 7, doubt: 8, sigh: 9, tired: 9, pain: 10, hurt: 10, serious: 11 }, cry: 9, pout: 11 } },
   沈若蘭: { file: 'assets/characters/shenruolan_faces.png', moods: { smile: 0, happy: 1, laugh: 2, surprise: 3, worry: 4, sad: 5, shy: 6, flustered: 7, angry: 8, serious: 9, think: 10, cry: 11 } },
 };
-for (const f of Object.values(FACE_SETS)) if (f.file) { f.el = new Image(); f.el.src = f.file; f.img = () => f.el.complete && f.el.naturalWidth && f.el; }
+FACE_SETS.蒙面人甲 = FACE_SETS.蒙面人乙 = FACE_SETS.黑衣人 = FACE_SETS.蒙面人;
+for (const f of new Set(Object.values(FACE_SETS))) if (f.file) { f.el = new Image(); f.el.src = f.file; f.img = () => f.el.complete && f.el.naturalWidth && f.el; }
 // 猜表情：回傳通用名稱，再對應到各角色表上最接近的一格
 function guessMood(text) {
   const t = String(text || '');
