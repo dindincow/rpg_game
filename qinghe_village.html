@@ -18,7 +18,7 @@ main{margin:auto}
 .top h1{font-family:"Noto Serif TC","PMingLiU",serif;font-size:24px;margin:0;color:#fbe5b0;letter-spacing:.08em}
 .top p{margin:0;color:#b7bbb0;font-size:13px}
 .game{width:min(100%,calc((100vh - 170px) * 16 / 9));min-width:min(100%,640px);margin:0 auto;position:relative;border:4px ridge #a58c61;border-radius:8px;box-shadow:0 20px 60px #0008;overflow:hidden;user-select:none}
-canvas#game{width:100%;aspect-ratio:16/9;display:block;margin:auto;image-rendering:pixelated;background:#1b2218}
+canvas#game{width:100%;aspect-ratio:16/9;display:block;margin:auto;image-rendering:auto;background:#1b2218}
 /* HUD */
 .hud{position:absolute;top:12px;left:12px;background:#0f1918d9;border:1px solid #c2a36a;border-radius:6px;padding:8px 14px 9px;pointer-events:none;min-width:190px}
 .hud .loc{font-family:"Noto Serif TC","PMingLiU",serif;font-size:17px;color:#ffe2a4;font-weight:700;letter-spacing:.1em}
@@ -348,7 +348,7 @@ ul.log{list-style:none;padding:0;margin:0;font-size:13px;max-height:260px;overfl
       <div class="press" id="press"><span>— 按任意鍵開始 —</span></div>
       <video id="titleVideo" src="assets/cg/標題畫面.mp4" poster="assets/cg/標題畫面.png" autoplay muted loop playsinline></video>
       <div class="btns"><button id="btnNew">開始新遊戲</button><button id="btnContinue">繼續旅程</button><button id="btnHelp">操作說明</button></div>
-      <div class="help" id="helpBox"><kbd>WASD</kbd>／<kbd>方向鍵</kbd> 移動　<kbd>Shift</kbd> 奔跑<br><kbd>E</kbd>／<kbd>空白</kbd>／<kbd>Enter</kbd> 交談、調查、翻頁<br><kbd>Esc</kbd>／<kbd>M</kbd> 開啟選單（狀態、道具、裝備、任務、日誌、存檔）<br><kbd>K</kbd> 技能樹</div>
+      <div class="help" id="helpBox"><kbd>WASD</kbd>／<kbd>方向鍵</kbd> 移動　<kbd>Shift</kbd> 奔跑<br><kbd>E</kbd>／<kbd>空白</kbd>／<kbd>Enter</kbd> 交談、調查、翻頁<br><kbd>Esc</kbd>／<kbd>M</kbd> 開啟選單（狀態、道具、裝備、任務、日誌、存檔）<br><kbd>K</kbd> 技能樹<br><kbd>G</kbd> 清河地區大地圖（室外才能打開）<br><kbd>C</kbd> 大地圖碰撞檢視（紅色＝不能走）</div>
     </div>
 
     <div class="loading" id="loading"><span id="loadingText">載入素材中……</span></div>
@@ -356,9 +356,9 @@ ul.log{list-style:none;padding:0;margin:0;font-size:13px;max-height:260px;overfl
   </div>
 
   <div class="panel">
-    <div class="row2"><b>操作</b><span><kbd>WASD</kbd> 移動</span><span><kbd>Shift</kbd> 奔跑</span><span><kbd>E</kbd> 交談／調查／確定</span><span><kbd>Esc</kbd> 選單</span><span><kbd>K</kbd> 技能樹</span><span><kbd>V</kbd> 村務</span></div>
+    <div class="row2"><b>操作</b><span><kbd>WASD</kbd> 移動</span><span><kbd>Shift</kbd> 奔跑</span><span><kbd>E</kbd> 交談／調查／確定</span><span><kbd>Esc</kbd> 選單</span><span><kbd>K</kbd> 技能樹</span><span><kbd>V</kbd> 村務</span><span><kbd>G</kbd> 大地圖</span><span><kbd>C</kbd> 碰撞檢視</span></div>
     <div class="row2"><label>人物大小 <input id="scale" type="range" min="1" max="2.5" step=".05" value="1.35"></label><output id="scaleValue">1.35×</output>
-      <button id="btnMenu">選單</button><button id="btnSave">存檔</button><button id="btnFull">全螢幕 F</button><button id="btnMusic">音樂：關</button><label>音量 <input id="volume" type="range" min="0" max="1" step=".05" value="1"></label></div>
+      <button id="btnMenu">選單</button><button id="btnSave">存檔</button><button id="btnWorld">大地圖 G</button><button id="btnFull">全螢幕 F</button><button id="btnMusic">音樂：關</button><label>音量 <input id="volume" type="range" min="0" max="1" step=".05" value="1"></label></div>
   </div>
   <details class="dev" id="dev" open><summary>數值編輯（測試用）</summary><div class="devbody" id="devBody"></div></details>
   <div class="mobile"><div class="dpad"><button data-dir="up">↑</button><button data-dir="left">←</button><button data-dir="down">↓</button><button data-dir="right">→</button></div>
@@ -380,6 +380,8 @@ ul.log{list-style:none;padding:0;margin:0;font-size:13px;max-height:260px;overfl
 <script src="js/ch02.js"></script>
 <script src="js/ch03.js"></script>
 <script src="js/ch04.js"></script>
+<script src="js/worldmap_data.js"></script>
+<script src="js/worldmap.js"></script>
 <script src="js/skilltree.js"></script>
 <script src="js/game.js"></script>
 <script src="js/battle.js"></script>

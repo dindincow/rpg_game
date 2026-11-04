@@ -2,8 +2,20 @@
 // 清河村 — 遊戲主程式：移動、繪製、對話、商店、選單、存檔
 const C = document.getElementById('game'), ctx = C.getContext('2d');
 const VW = 960, VH = 540, FOOT = 58;
-// 畫布實際用 2 倍解析度（1920×1080），座標仍以 960×540 計算；主角的高解析度圖（img.hd = 3）才畫得出細節
-C.width = VW * 2; C.height = VH * 2; ctx.scale(2, 2); ctx.imageSmoothingEnabled = false;
+// 畫布實際解析度＝座標（960×540）× RS；主角的高解析度圖（img.hd = 3）才畫得出細節
+// RS 跟著畫布實際顯示的大小（含 Retina 的 devicePixelRatio）挑 2 或 3：全螢幕時畫面用真正的螢幕像素畫，不會被 CSS 硬拉糊
+// 只用整數倍：點陣人物、地面用最近鄰放大，非整數倍會有的點寬、有的點窄；剩下的差距交給 CSS 平滑縮放
+let RS = 0;
+function fitCanvas() {
+  const w = C.getBoundingClientRect().width * (window.devicePixelRatio || 1);
+  const rs = Math.max(2, Math.min(3, Math.round(w / VW)));
+  if (rs === RS) return;
+  RS = rs; C.width = VW * RS; C.height = VH * RS; // 改畫布尺寸會清掉 ctx 的狀態，要重設縮放與平滑
+  ctx.setTransform(RS, 0, 0, RS, 0, 0); ctx.imageSmoothingEnabled = false;
+}
+fitCanvas();
+window.addEventListener('resize', fitCanvas);
+document.addEventListener('fullscreenchange', () => requestAnimationFrame(fitCanvas));
 // 主角圖格：高解析度圖每格是原本的 hd 倍；縮回原大小畫時改用平滑縮放，才不會出現鋸齒
 const hd3 = (img) => ((img.hd = 3), img);
 const cellOf = (img, fw = CHAR_FW) => fw * ((img && img.hd) || 1);
@@ -157,6 +169,7 @@ function buildInteractables() {
   if (G.id === 'wildwood') { interactables = [...storyInteractables(), ...npcIt]; return; }
   if (G.id === 'mine') { interactables = [...mineInteractables(), ...npcIt]; return; }
   if (G.id === 'yunshan') { interactables = [...yunInteractables(), ...npcIt]; return; }
+  if (G.id === 'worldmap') { interactables = [...worldInteractables(), ...npcIt]; return; }
   const folks = DOOR_FOLKS.filter((f) => !bld(f.b).cutout).map((f) => { const b = bld(f.b); return { x: b.x + f.rel[0], y: b.y + f.rel[1], r: 46, name: f.name, act: () => talk(typeof f.talk === 'function' ? f.talk() : f.talk) }; });
   for (const ch of V_CHESTS) G.chests[ch.id].img = chestFrame(F()['chest_' + ch.id] ? 2 : 0);
   interactables = [
@@ -439,7 +452,8 @@ function leaveVillage() {
   talk([{ name: '', q: '要離開清河村，踏上前往雲山的旅途嗎？', choices: [
     ['啟程', () => [() => fade(() => { F().leftOnce = 1; switchMap('field', 960, 110, 0); }, 1000),
       '你踏上南方的官道。回頭望去，清河村的炊煙在晨霧中緩緩升起。', '前方，雲山層巒疊嶂。林間的風，帶著一絲說不出的寒意。', () => toast('野外會遇到敵人 · 打不過可以逃跑')]],
-    ['再準備一下', () => { player.y = WORLD.H - 90; player.dir = 1; }],
+    // 從大地圖的雲山官道入口問的話，原地不動就好；在清河村南村口問的話，往回退一步才不會又觸發
+    ['再準備一下', () => { if (G.id === 'village') { player.y = WORLD.H - 90; player.dir = 1; } }],
   ] }]);
 }
 
@@ -715,6 +729,7 @@ function areaName(x, y) {
   }
   if (G.id === 'forest') return Math.hypot(x - FO_MINE.x, y - FO_MINE.y) < 220 ? '舊礦坑' : '村外森林';
   if (G.id === 'wildwood') return '村西野林';
+  if (G.id === 'worldmap') return worldAreaName(x, y);
   if (G.id === 'mine') return y < 330 ? '礦坑深處' : x > 860 ? '東礦室' : x < 420 ? '西礦室' : '礦山隧道';
   if (G.id === 'field') {
     if (Math.hypot(x - F_SHRINE.x, y - F_SHRINE.y) < 220) return '土地廟';
@@ -769,7 +784,7 @@ function update(dt, t) {
   // 玩家
   if (!isModal()) {
     const dx = (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0), dy = (keys.has('down') ? 1 : 0) - (keys.has('up') ? 1 : 0);
-    const spd = 150 * (keys.has('run') ? 1.65 : 1) * (S.equip.acc === 'boots' ? 1.08 : 1) * (1 + treeFx('move'));
+    const spd = 150 * (keys.has('run') ? 1.65 : 1) * (S.equip.acc === 'boots' ? 1.08 : 1) * (1 + treeFx('move')) * (G.speedScale || 1); // 大地圖人小，走路也跟著放慢
     const ox = player.x, oy = player.y;
     moveActor(player, dx, dy, spd, dt);
     if (storyTriggers()) { /* 劇情事件優先 */ }
@@ -778,6 +793,8 @@ function update(dt, t) {
     else if (G.id === 'forest') forestTriggers();
     else if (G.id === 'wildwood') wildTriggers();
     else if (G.id === 'mine') mineTriggers();
+    // 大地圖沒有邊界出口（入口都靠 E），也不能落到下面清河村專用的門口、南橋頭守衛判定
+    else if (G.id === 'worldmap') { /* 無 */ }
     else if (G.interior) { if (player.y > G.H - 26 && Math.abs(player.x - G.door) < 36) leaveRoom(); }
     // 走進門口（按住「上」）即進屋
     // 王宅：第 2 章老吳送到門口之後才能進去（修好之前屋裡漏雨、床腳歪斜）
@@ -787,7 +804,8 @@ function update(dt, t) {
       player.y = GATE.y - 18; player.dir = 1; keys.clear();
       const g = npcs.find((n) => n.id === 'guard'); face(g); NPC_TALK.guard(g);
     }
-    if (G.id === 'village' && player.y > WORLD.H - 40) { keys.clear(); leaveVillage(); }
+    // 南村口：第 2 章之後走出去是清河地區大地圖（雲山官道改從大地圖進）；之前照舊直接問要不要啟程去雲山官道
+    if (G.id === 'village' && player.y > WORLD.H - 40) { keys.clear(); if (F().ch02_complete) gotoWorldMap('qinghe'); else leaveVillage(); }
     if (G.id === 'village') raidCheck();
     // 西村口落石旁的小徑通往村西野林（再往西才是村外森林）
     if (G.id === 'village' && player.x < 175 && Math.abs(player.y - 800 - VN) < 70) { keys.clear(); fade(() => { switchMap('wildwood', WWW - 60, WW_EAST.y, 2); toast('村西野林'); }); }
@@ -853,8 +871,10 @@ function drawActor(a) {
     a.pose = { img: art.idle, fr: idleFrame(art.idleSeq, performance.now() + (a.x * 37 % 5000)) }; drawActor(a); a.pose = null; return;
   }
   if (a.lift || a.jx) { const x0 = a.x, y0 = a.y; a.x += a.jx || 0; a.y -= a.lift || 0; a.lift0 = a.lift; a.lift = 0; const j = a.jx; a.jx = 0; drawActor(a); a.x = x0; a.y = y0; a.lift = a.lift0; a.jx = j; return; }
-  const x = Math.round(a.x - cam.x), y = Math.round(a.y - cam.y), sz = Math.round(64 * a.scale), fw = cellOf(a.sheet, a.fw || CHAR_FW);
-  if (!a.lie) { ctx.fillStyle = 'rgba(15,20,12,.38)'; ctx.beginPath(); ctx.ellipse(x, y, 12 * a.scale, 4.5 * a.scale, 0, 0, Math.PI * 2); ctx.fill(); }
+  // G.actorScale：大地圖上人物畫小一點（概念圖的比例：人約為房子一半高），其他地圖都是 1
+  const as = a.scale * (G.actorScale || 1);
+  const x = Math.round(a.x - cam.x), y = Math.round(a.y - cam.y), sz = Math.round(64 * as), fw = cellOf(a.sheet, a.fw || CHAR_FW);
+  if (!a.lie) { ctx.fillStyle = 'rgba(15,20,12,.38)'; ctx.beginPath(); ctx.ellipse(x, y, 12 * as, 4.5 * as, 0, 0, Math.PI * 2); ctx.fill(); }
   // a.lie：躺著／坐著的整張圖，依世界座標 { x, y, w, h } 直接畫，不畫影子
   // 可選：hide 整個不畫；sheet＋fr() 橫排多格動畫取第幾格；breathe 呼吸起伏（腳底不動）；nod 打瞌睡點頭
   if (a.lie && a.lie.hide) return;
@@ -889,7 +909,7 @@ function drawActor(a) {
   }
   // a.stool：坐在矮凳上，凳子先畫、人疊在上面
   if (a.sit && a.stool && STOOL_IMG.complete) {
-    const s = Math.round(52 * a.scale / 1.35); ctx.imageSmoothingEnabled = true;
+    const s = Math.round(52 * as / 1.35); ctx.imageSmoothingEnabled = true;
     ctx.drawImage(STOOL_IMG, x - s / 2, y - s * 0.72, s, s); ctx.imageSmoothingEnabled = false;
   }
   smoothFor(a.sheet); // 點陣人物不做平滑縮放，避免糊掉（高解析度主角圖除外）
@@ -897,11 +917,11 @@ function drawActor(a) {
   if (a.pose && a.pose.img) {
     const p = a.pose; ctx.save(); ctx.translate(x, 0); if (p.flip) ctx.scale(-1, 1);
     const pc = cellOf(p.img, 86); smoothFor(p.img);
-    ctx.drawImage(p.img, p.fr * pc, 0, pc, pc, -sz / 2, y - Math.round(FOOT * a.scale), sz, sz); ctx.restore(); ctx.imageSmoothingEnabled = false; return;
+    ctx.drawImage(p.img, p.fr * pc, 0, pc, pc, -sz / 2, y - Math.round(FOOT * as), sz, sz); ctx.restore(); ctx.imageSmoothingEnabled = false; return;
   }
   // a.sit：坐在地上，身體壓矮、略為變寬，腳底位置不動
-  if (a.sit) { const h = sz * 0.74, w = sz * 1.06; ctx.drawImage(a.sheet, a.frame * fw, a.dir * fw, fw, fw, Math.round(x - w / 2), Math.round(y - FOOT * a.scale * 0.74), w, h); }
-  else ctx.drawImage(a.sheet, a.frame * fw, a.dir * fw, fw, fw, Math.round(x - sz / 2), y - Math.round(FOOT * a.scale), sz, sz);
+  if (a.sit) { const h = sz * 0.74, w = sz * 1.06; ctx.drawImage(a.sheet, a.frame * fw, a.dir * fw, fw, fw, Math.round(x - w / 2), Math.round(y - FOOT * as * 0.74), w, h); }
+  else ctx.drawImage(a.sheet, a.frame * fw, a.dir * fw, fw, fw, Math.round(x - sz / 2), y - Math.round(FOOT * as), sz, sz);
   ctx.imageSmoothingEnabled = false;
 }
 // 切換領頭（Q）：同行的秦無風走在最前面、小蝦米改當跟班；只換外觀，操作與判定仍在 player 身上
@@ -954,7 +974,9 @@ function render(t) {
   } else {
     cam.x = Math.round(Math.max(0, Math.min(G.W - VW, fx - VW / 2)));
     cam.y = Math.round(Math.max(0, Math.min(G.H - VH, fy - VH / 2)));
-    ctx.drawImage(G.ground, cam.x, cam.y, VW, VH, 0, 0, VW, VH);
+    // 大地圖的地面是分塊的手繪底圖，只畫看得到的那幾塊（js/worldmap.js）
+    if (G.drawGround) G.drawGround(ctx, cam);
+    else ctx.drawImage(G.ground, cam.x, cam.y, VW, VH, 0, 0, VW, VH);
   }
   drawStoryDecals();
   // 水面點綴：波紋淡入淡出、落葉順流漂動（橋下不畫）
@@ -1036,6 +1058,7 @@ function render(t) {
   // 被樹木遮住的怪物與主角也透出半透明身影，避免看不見
   ctx.globalAlpha = 0.55; for (const m of monsters) if (!m.dead) { const st = m.stun; m.stun = 0; drawMonster(m, t); m.stun = st; }
   if (!G.interior && !T.on) { ctx.globalAlpha = 0.4; drawLead(); } ctx.globalAlpha = 1;
+  drawWorldLabels();
   // 門口提示：按「上」進入
   const dn = !isModal() && doorNear();
   if (dn) {
@@ -1049,9 +1072,12 @@ function render(t) {
   if (near) {
     const ox = near.npc ? near.npc.x : near.x, oy = near.npc ? near.npc.y - 64 * near.npc.scale - 6 : near.y - 52;
     const x = Math.round(ox - cam.x), y = Math.round(oy - cam.y + Math.sin(t / 220) * 2);
+    // prompt：大地圖的地標寫出要做的事（「E 進入黑松林」），其他互動只顯示 E
+    const label = near.prompt ? 'E  ' + near.prompt : 'E';
+    ctx.font = 'bold 15px system-ui'; const bw = near.prompt ? ctx.measureText(label).width + 22 : 26;
     ctx.fillStyle = '#1a1510e6'; ctx.strokeStyle = '#e3c37c'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.roundRect(x - 13, y - 13, 26, 24, 5); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = '#ffe3a0'; ctx.font = 'bold 15px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('E', x, y);
+    ctx.beginPath(); ctx.roundRect(x - bw / 2, y - 13, bw, 24, 5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ffe3a0'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, x, y);
   }
   // 落葉
   for (const l of leaves) { ctx.fillStyle = l.c; ctx.fillRect(Math.round(l.x), Math.round(l.y), 4, Math.sin(l.p) > 0 ? 3 : 2); }
@@ -1149,6 +1175,8 @@ window.addEventListener('keydown', (e) => {
   if (treeOpen) { if (k === 'escape' || k === 'k') { e.preventDefault(); closeTree(); } return; }
   if (k === 'k' && !shopOpen && !menuOpen && !fading) { e.preventDefault(); openTree(); return; }
   if (k === 'v' && !e.repeat && !shopOpen && !menuOpen && !fading) { e.preventDefault(); toggleGov(); return; }
+  if (k === 'g' && !e.repeat) { e.preventDefault(); openWorldMap(); return; }
+  if (k === 'c' && !e.repeat && !shopOpen && !menuOpen) { e.preventDefault(); toggleWorldColl(); return; }
   if (T.on) { tacticsKey(k, e); return; }
   if (k === 'q' && !e.repeat && !shopOpen && !menuOpen && !fading) { e.preventDefault(); toggleLeader(); return; }
   if (k === 'escape' || k === 'm') {
@@ -1176,6 +1204,7 @@ $('treeClose').onclick = closeTree;
 for (const b of document.querySelectorAll('#menuTabs button[data-tab]')) b.onclick = () => { menuTab = b.dataset.tab; renderMenu(); };
 $('btnMenu').onclick = () => !isModal() && openMenu();
 $('btnSave').onclick = () => started && toast(saveGame() ? '已存檔' : '無法存檔');
+$('btnWorld').onclick = () => openWorldMap();
 $('btnMusic').onclick = () => Music.toggle();
 $('volume').oninput = (e) => Music.setVolume(Number(e.target.value));
 
@@ -1297,6 +1326,7 @@ function initActors() {
   MAPS.forest.npcs = FOREST_NPC_DEFS.map((d) => forestActor(d, mk));
   MAPS.mine.npcs = [];
   MAPS.wildwood.npcs = [];
+  MAPS.worldmap.npcs = [];
   // 劇情 NPC：已有走路圖的角色可再加色調當占位（例如沈若蘭暫借吳嬸的圖）
   for (const id in ROOM_NPC_DEFS) MAPS['in_' + id].npcs = ROOM_NPC_DEFS[id].map(mk);
   // 劇情 NPC（要在室內 NPC 之後加，才不會被蓋掉）；已有走路圖的角色可再加色調當占位
@@ -1391,6 +1421,9 @@ async function boot() {
     MAPS.forest = buildForest();
     MAPS.wildwood = buildWild();
     MAPS.mine = buildMine();
+    $('loadingText').textContent = '繪製清河地區……';
+    await loadWorldArt();
+    MAPS.worldmap = buildWorldMap();
     await Promise.all(Object.entries(BATTLE_BG_FILES).map(async ([id, n]) => { BATTLE_BG[id] = await loadImg('assets/戰鬥/' + n + '.png').catch(() => null); }));
     await Promise.all(Object.values(ROOMS).flatMap((r) => [r.bg, r.bgAlt]).filter(Boolean).map(async (bg) => { ROOM_BG[bg] = await loadImg('assets/interiors/' + bg + '.png').catch(() => null); }));
     Object.assign(MAPS, buildInteriors());
