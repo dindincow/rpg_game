@@ -1,6 +1,6 @@
 'use strict';
 // 清河地區大地圖（手繪底圖版）：完整手繪地形底圖 ＋ 碰撞資料 ＋ 入口 ＋ 角色自由行走
-// 底圖：assets/worldmap2/wm_base_master.png（1672×941，第 2 版）照 tools/build_worldmap2.py 的倍率 K（目前 1 倍）切成分塊（assets/worldmap2/chunks/，貼圖 3 倍解析度）
+// 底圖：assets/worldmap2/wm_base_master.png（1672×941，第 3 版）照 tools/build_worldmap2.py 的倍率 K（目前 1 倍）切成分塊（assets/worldmap2/chunks/，貼圖 3 倍解析度）
 //   每一格畫面只畫看得到的那幾塊（整張放進一張 canvas 太大時部分瀏覽器會失敗，之後地圖再加大也不用改）
 // 碰撞、地標入口在 js/worldmap_data.js：由 tools/build_worldmap2.py 產生；要改入口位置或碰撞，改 tools/worldmap2_layout.json 再重跑
 // 主角、走路動畫、攝影機、互動、存檔都沿用一般地圖：G.id = 'worldmap'
@@ -16,8 +16,8 @@ const WM_ENTRANCES = {
   guandao: { name: '雲山官道', sub: '第 5 章', go: () => leaveVillage(),
     ok: () => F().gate || F().leftOnce, no: ['（關口的守衛攔住了你。）', ['阿武', '沒有村長的吩咐，我可不能放你出去。']] },
   qingfeng: { name: '清風寨', sub: '武松', note: ['（山腰上插著藍旗的寨子，寨門緊閉。）', '【預留地點・尚未開放】'] },
-  heifeng: { name: '黑風寨', sub: '秦紅櫻', note: ['（崖頂的石寨插滿紅旗，石階上有人守著。）', '【預留地點・尚未開放】'] },
-  tufeng: { name: '突風寨', sub: '雷萬山', note: ['（木柵圍起來的山寨，望樓上燃著火盆，有人盯著官道。）', '【預留地點・尚未開放】'] },
+  heifeng: { name: '黑風寨', sub: '秦紅櫻', note: ['（崖頂的木寨插著黑旗，枯樹下燒著火盆，寨門有人守著。）', '【預留地點・尚未開放】'] },
+  tufeng: { name: '突風寨', sub: '雷萬山', note: ['（木柵圍著幾頂帳篷，望樓上有人盯著山下的路。）', '【預留地點・尚未開放】'] },
   yizhan: { name: '官道驛站', sub: '商旅據點', note: ['（驛站前停著幾輛貨車，馬夫正在餵馬。）', '【預留地點・尚未開放】'] },
 };
 // 從各張室外地圖打開大地圖時，站到哪個入口前

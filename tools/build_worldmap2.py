@@ -66,9 +66,17 @@ hsv = np.asarray(master.convert('HSV')).astype(np.float32)
 hue, sat, val = hsv[..., 0] * 360 / 255, hsv[..., 1] / 255, hsv[..., 2] / 255
 lum = np.asarray(master.convert('L')).astype(np.float32)
 std = np.sqrt(np.maximum(box_blur(lum * lum, 3) - box_blur(lum, 3) ** 2, 0))  # 樹叢、岩石紋理粗、草地平順
-road = (hue > 28) & (hue < 50) & (sat > 0.35) & (sat < 0.75) & (val > 0.65)
-grass = (hue > 45) & (hue < 100) & (sat > 0.45) & (val > 0.4) & (std < 32)
-water = (hue > 170) & (hue < 215) & (sat > 0.3)
+# 判斷顏色的門檻：每張底圖的色調不同，可以在 layout 的 "colors" 覆蓋（[色相下限, 色相上限, 飽和度下限, 飽和度上限, 明度下限]）
+C = {'road': [28, 50, 0.35, 0.75, 0.65], 'grass': [45, 100, 0.45, 1, 0.4], 'water': [170, 215, 0.3, 1, 0], 'grassStd': 32, 'waterSmooth': 0}
+C.update({k: v for k, v in L.get('colors', {}).items() if k != '說明'})
+def color(c):
+    h0, h1, s0, s1, v0 = c
+    return (hue > h0) & (hue < h1) & (sat > s0) & (sat < s1) & (val > v0)
+road = color(C['road'])
+grass = color(C['grass']) & (std < C['grassStd'])
+water = color(C['water'])
+if C['waterSmooth']:  # 去掉零星的藍色陰影雜點（樹蔭、山影）
+    water = box_blur(water.astype(np.float32), C['waterSmooth']) > 0.5
 
 yy, xx = np.mgrid[0:MH, 0:MW]
 blocked_fix = np.zeros((MH, MW), bool)
@@ -103,7 +111,8 @@ def flood(mask, pts, label):
 
 seeds = [v['at'] for k, v in L['landmarks'].items() if k != '說明'] + L['extraSeeds']
 # 路網：土路色、連得到起點的部分；起點附近 6 格先算成路，起點才不會剛好落在路邊的雜點上
-road_c = dilate(erode(road, 1), 1) | walk_fix
+# 路面雜點：預設先收縮再膨脹（去掉零星亮點）；路比較細的底圖改成先膨脹再收縮（補斷點），layout 的 colors.roadClose 設 true
+road_c = (erode(dilate(road, 1), 1) if C.get('roadClose') else dilate(erode(road, 1), 1)) | walk_fix
 for x, y in seeds:
     road_c[max(0, y - 6):y + 7, max(0, x - 6):x + 7] = True
 road_net = flood(road_c & ~dilate(water, 1) & ~blocked_fix | walk_fix, seeds, '道路')
